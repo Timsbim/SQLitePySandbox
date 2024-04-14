@@ -1,3 +1,4 @@
+CREATE TABLE gigasecond (moment TEXT, result TEXT);
 INSERT INTO gigasecond (moment)
     VALUES
         ('2011-04-25'),

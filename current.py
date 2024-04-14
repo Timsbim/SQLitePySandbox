@@ -27,6 +27,119 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
+def resistor_color_duo():
+    """Exercism SQLite path exercise 9, Resistor Color Duo:
+    https://exercism.org/tracks/sqlite/exercises/resistor-color-duo"""
+
+    sql_path = SQL_PATH / "Resistor-Color-Duo"
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE color_code (color1 TEXT, color2 TEXT, result INT);
+            INSERT INTO color_code (color1, color2)
+                VALUES
+                    ('brown', 'black'),
+                    ('blue', 'grey'),
+                    ('yellow', 'violet'),
+                    ('white', 'red'),
+                    ('orange', 'orange'),
+                    ('black', 'brown');
+            """)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
+        query = dedent("""\
+            WITH coding(color, code) AS (
+                VALUES
+                    ('black',  0),
+                    ('brown',  1),
+                    ('red',    2),
+                    ('orange', 3),
+                    ('yellow', 4),
+                    ('green',  5),
+                    ('blue',   6),
+                    ('violet', 7),
+                    ('grey',   8),
+                    ('white',  9)              
+            )
+            UPDATE color_code
+            SET result = c1.code * 10 + c2.code
+            FROM coding c1, coding c2
+            WHERE (color1, color2) = (c1.color, c2.color);
+            """)
+        print_query(query, filepath=sql_path / "solution.sql")        
+        con.execute(query)
+        query = "SELECT * FROM color_code;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+
+
+#resistor_color_duo()
+
+
+def resistor_color():
+    """Exercism SQLite path exercise 8, Resistor Color:
+    https://exercism.org/tracks/sqlite/exercises/resistor-color"""
+
+    sql_path = SQL_PATH / "Resistor-Color"
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE color_code (color TEXT, result INT);
+            INSERT INTO color_code (color)
+                VALUES
+                    ('black'),
+                    ('white'),
+                    ('orange');
+            """)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
+        query = dedent("""\
+            UPDATE color_code
+            SET result = CASE color
+                    WHEN 'black'  THEN 0
+                    WHEN 'brown'  THEN 1
+                    WHEN 'red'    THEN 2
+                    WHEN 'orange' THEN 3
+                    WHEN 'yellow' THEN 4
+                    WHEN 'green'  THEN 5
+                    WHEN 'blue'   THEN 6
+                    WHEN 'violet' THEN 7
+                    WHEN 'grey'   THEN 8
+                    WHEN 'white'  THEN 9
+                END;
+            """)
+        print_query(query, filepath=sql_path / "solution_1.sql")
+        query = dedent("""\
+            WITH coding(color, code) AS (
+                VALUES
+                    ('black',  0),
+                    ('brown',  1),
+                    ('red',    2),
+                    ('orange', 3),
+                    ('yellow', 4),
+                    ('green',  5),
+                    ('blue',   6),
+                    ('violet', 7),
+                    ('grey',   8),
+                    ('white',  9)              
+            )
+            UPDATE color_code
+            SET result = coding.code
+            FROM coding
+            WHERE color_code.color = coding.color;
+            """)
+        print_query(query, filepath=sql_path / "solution_2.sql")        
+        con.execute(query)
+        query = "SELECT * FROM color_code;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+
+
+#resistor_color()
+
+
 def raindrops():
     """Exercism SQLite path exercise 7, Raindrops:
     https://exercism.org/tracks/sqlite/exercises/raindrops"""
@@ -37,10 +150,6 @@ def raindrops():
     with sqlite.connect(":memory:") as con:
         query = dedent("""\
             CREATE TABLE raindrops (number INT, sound TEXT);
-            """)
-        print_query(query, filepath=sql_path / "create_table.sql")        
-        con.execute(query)
-        query = dedent("""\
             INSERT INTO raindrops (number)
                 VALUES
                     (1),
@@ -62,8 +171,8 @@ def raindrops():
                     (105),
                     (3125);
             """)
-        print_query(query, filepath=sql_path / "insert_data.sql")
-        con.execute(query)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
         query = dedent("""\
             UPDATE raindrops
             SET sound = coalesce(
@@ -96,10 +205,6 @@ def leap():
     with sqlite.connect(":memory:") as con:
         query = dedent("""\
             CREATE TABLE leap (year INT, is_leap BOOL);
-            """)
-        print_query(query, filepath=sql_path / "create_table.sql")        
-        con.execute(query)
-        query = dedent("""\
             INSERT INTO leap (year)
                 VALUES
                     (2015),
@@ -112,8 +217,8 @@ def leap():
                     (2400),
                     (1800);
             """)
-        print_query(query, filepath=sql_path / "insert_data.sql")
-        con.execute(query)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
         query = dedent("""\
             UPDATE leap
             SET is_leap = CASE
@@ -141,10 +246,6 @@ def grains():
     with sqlite.connect(":memory:") as con:
         query = dedent("""\
             CREATE TABLE grains (task TEXT, square INT, result INT);
-            """)
-        print_query(query, filepath=sql_path / "create_table.sql")        
-        con.execute(query)
-        query = dedent("""\
             INSERT INTO grains (task, square)
                 VALUES
                     ('single-square', 1),
@@ -156,8 +257,8 @@ def grains():
                     ('single-square', 64),
                     ('total', 0);
             """)
-        print_query(query, filepath=sql_path / "insert_data.sql")
-        con.execute(query)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
         query = dedent("""\
             WITH RECURSIVE counts(square, grains) AS (
                 SELECT 1, 1
@@ -203,10 +304,6 @@ def gigasecond():
     with sqlite.connect(":memory:") as con:
         query = dedent("""\
             CREATE TABLE gigasecond (moment TEXT, result TEXT);
-            """)
-        print_query(query, filepath=sql_path / "create_table.sql")        
-        con.execute(query)
-        query = dedent("""\
             INSERT INTO gigasecond (moment)
                 VALUES
                     ('2011-04-25'),
@@ -215,8 +312,8 @@ def gigasecond():
                     ('2015-01-24T22:00:00'),
                     ('2015-01-24T23:59:59');
             """)
-        print_query(query, filepath=sql_path / "insert_data.sql")
-        con.execute(query)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
         query = dedent("""\
             UPDATE gigasecond
             SET result = strftime('%Y-%m-%dT%H:%M:%S', moment, '1000000000 seconds');
@@ -243,24 +340,20 @@ def difference_of_squares():
         query = dedent("""\
             CREATE TABLE "difference-of-squares"
                 (number INT, property TEXT, result INT);
-            """)
-        print_query(query, filepath=sql_path / "create_table.sql")        
-        con.execute(query)
-        query = dedent("""\
             INSERT INTO "difference-of-squares" (number, property)
-            VALUES
-                (1, 'squareOfSum'),
-                (5, 'squareOfSum'),
-                (100, 'squareOfSum'),
-                (1, 'sumOfSquares'),
-                (5, 'sumOfSquares'),
-                (100, 'sumOfSquares'),
-                (1, 'differenceOfSquares'),
-                (5, 'differenceOfSquares'),
-                (100, 'differenceOfSquares');
+                VALUES
+                    (1, 'squareOfSum'),
+                    (5, 'squareOfSum'),
+                    (100, 'squareOfSum'),
+                    (1, 'sumOfSquares'),
+                    (5, 'sumOfSquares'),
+                    (100, 'sumOfSquares'),
+                    (1, 'differenceOfSquares'),
+                    (5, 'differenceOfSquares'),
+                    (100, 'differenceOfSquares');
             """)
-        print_query(query, filepath=sql_path / "insert_data.sql")
-        con.execute(query)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
         query = dedent("""\
             UPDATE "difference-of-squares"
             SET result =
@@ -292,11 +385,9 @@ def darts():
     sql_path.mkdir(parents=True, exist_ok=True)
     
     with sqlite.connect(":memory:") as con:
-        query = dedent("CREATE TABLE darts (x REAL, y REAL, score INT);\n\n")
-        print_query(query, filepath=sql_path / "create_table.sql")        
-        con.execute(query)
-        query = dedent("""\
-             INSERT INTO darts (x, y)
+        query = dedent("""
+            CREATE TABLE darts (x REAL, y REAL, score INT);
+            INSERT INTO darts (x, y)
                 VALUES
                     (-9, 9),
                     (0, 10),
@@ -312,8 +403,8 @@ def darts():
                     (7.1, -7.1),
                     (0.5, -4);
             """)
-        print_query(query, filepath=sql_path / "insert_data.sql")
-        con.execute(query)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
         query = dedent("""\
             UPDATE darts
             SET score = CASE

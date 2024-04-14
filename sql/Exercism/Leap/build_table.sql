@@ -1,3 +1,4 @@
+CREATE TABLE leap (year INT, is_leap BOOL);
 INSERT INTO leap (year)
     VALUES
         (2015),

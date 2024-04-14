@@ -1,3 +1,4 @@
+CREATE TABLE grains (task TEXT, square INT, result INT);
 INSERT INTO grains (task, square)
     VALUES
         ('single-square', 1),

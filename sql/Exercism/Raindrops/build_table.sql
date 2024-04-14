@@ -1,3 +1,4 @@
+CREATE TABLE raindrops (number INT, sound TEXT);
 INSERT INTO raindrops (number)
     VALUES
         (1),
