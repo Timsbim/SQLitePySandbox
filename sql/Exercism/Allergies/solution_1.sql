@@ -15,9 +15,9 @@ FROM codes
 WHERE (task, allergies.item) = ('allergicTo', codes.item);
 UPDATE allergies
 SET result = coalesce(
-    (SELECT group_concat(codes.item, ', ')
-     FROM codes
-     WHERE allergies.score & codes.code),
-    ''
-)
+        (SELECT group_concat(codes.item, ', ')
+         FROM codes
+         WHERE allergies.score & codes.code),
+        ''
+    )
 WHERE task = 'list';
