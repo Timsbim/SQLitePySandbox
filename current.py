@@ -27,6 +27,155 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
+def allergies():
+    """Exercism SQLite path exercise 11, Allergies:
+    https://exercism.org/tracks/sqlite/exercises/allergies"""
+
+    sql_path = SQL_PATH / "Allergies"
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE allergies (
+                task TEXT,
+                item TEXT,
+                score INT NOT NULL,
+                result TEXT
+            );
+            INSERT INTO allergies (task, item, score)
+                VALUES
+                    ('allergicTo', 'eggs', 0),
+                    ('allergicTo', 'eggs', 1),
+                    ('allergicTo', 'eggs', 3),
+                    ('allergicTo', 'eggs', 2),
+                    ('allergicTo', 'eggs', 255),
+                    ('allergicTo', 'peanuts', 0),
+                    ('allergicTo', 'peanuts', 2),
+                    ('allergicTo', 'peanuts', 7),
+                    ('allergicTo', 'peanuts', 5),
+                    ('allergicTo', 'peanuts', 255),
+                    ('allergicTo', 'shellfish', 0),
+                    ('allergicTo', 'shellfish', 4),
+                    ('allergicTo', 'shellfish', 14),
+                    ('allergicTo', 'shellfish', 10),
+                    ('allergicTo', 'shellfish', 255),
+                    ('allergicTo', 'strawberries', 0),
+                    ('allergicTo', 'strawberries', 8),
+                    ('allergicTo', 'strawberries', 28),
+                    ('allergicTo', 'strawberries', 20),
+                    ('allergicTo', 'strawberries', 255),
+                    ('allergicTo', 'tomatoes', 0),
+                    ('allergicTo', 'tomatoes', 16),
+                    ('allergicTo', 'tomatoes', 56),
+                    ('allergicTo', 'tomatoes', 40),
+                    ('allergicTo', 'tomatoes', 255),
+                    ('allergicTo', 'chocolate', 0),
+                    ('allergicTo', 'chocolate', 32),
+                    ('allergicTo', 'chocolate', 112),
+                    ('allergicTo', 'chocolate', 80),
+                    ('allergicTo', 'chocolate', 255),
+                    ('allergicTo', 'pollen', 0),
+                    ('allergicTo', 'pollen', 64),
+                    ('allergicTo', 'pollen', 224),
+                    ('allergicTo', 'pollen', 160),
+                    ('allergicTo', 'pollen', 255),
+                    ('allergicTo', 'cats', 0),
+                    ('allergicTo', 'cats', 128),
+                    ('allergicTo', 'cats', 192),
+                    ('allergicTo', 'cats', 64),
+                    ('allergicTo', 'cats', 255),
+                    ('list', '', 0),
+                    ('list', '', 1),
+                    ('list', '', 2),
+                    ('list', '', 8),
+                    ('list', '', 3),
+                    ('list', '', 5),
+                    ('list', '', 248),
+                    ('list', '', 255),
+                    ('list', '', 509),
+                    ('list', '', 257);
+            """)
+        #print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
+        query = dedent("""\
+            WITH codes(item, code) AS (
+                VALUES
+                    ('eggs', 1),
+                    ('peanuts', 2),
+                    ('shellfish', 4),
+                    ('strawberries', 8),
+                    ('tomatoes', 16),
+                    ('chocolate', 32),
+                    ('pollen', 64),
+                    ('cats', 128)
+            )
+            UPDATE allergies
+            SET result = CASE WHEN allergies.score & codes.code THEN 'true' ELSE 'false' END
+            FROM codes
+            WHERE (task, allergies.item) = ('allergicTo', codes.item);
+            """)
+        #print_query(query, filepath=sql_path / "solution.sql")   
+        #con.execute(query)
+        query = dedent("""\
+            CREATE TABLE codes (item TEXT, code INT);
+            INSERT INTO codes
+                VALUES
+                    ('eggs', 1),
+                    ('peanuts', 2),
+                    ('shellfish', 4),
+                    ('strawberries', 8),
+                    ('tomatoes', 16),
+                    ('chocolate', 32),
+                    ('pollen', 64),
+                    ('cats', 128);
+            UPDATE allergies
+            SET result = CASE WHEN allergies.score & codes.code THEN 'true' ELSE 'false' END
+            FROM codes
+            WHERE (task, allergies.item) = ('allergicTo', codes.item);
+            """)
+        print_query(query, filepath=sql_path / "solution.sql")   
+        con.executescript(query)
+        query = "SELECT * FROM allergies;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+
+
+allergies()
+
+
+def two_fer():
+    """Exercism SQLite path exercise 10, Two-Fer:
+    https://exercism.org/tracks/sqlite/exercises/two-fer"""
+
+    sql_path = SQL_PATH / "Two-Fer"
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE twofer (input TEXT, response TEXT);
+            INSERT INTO twofer (input)
+                VALUES
+                    (''),
+                    ('Alice'),
+                    ('Bob');
+            """)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
+        query = dedent("""\
+            UPDATE twofer
+            SET response =
+                'One for ' || coalesce(nullif(input, ''), 'you') || ', one for me.';
+            """)
+        print_query(query, filepath=sql_path / "solution.sql")        
+        con.execute(query)
+        query = "SELECT * FROM twofer;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+
+
+#two_fer()
+
+
 def resistor_color_duo():
     """Exercism SQLite path exercise 9, Resistor Color Duo:
     https://exercism.org/tracks/sqlite/exercises/resistor-color-duo"""
@@ -63,7 +212,7 @@ def resistor_color_duo():
                     ('white',  9)              
             )
             UPDATE color_code
-            SET result = c1.code * 10 + c2.code
+            SET result = c1.code || c2.code
             FROM coding c1, coding c2
             WHERE (color1, color2) = (c1.color, c2.color);
             """)

@@ -12,6 +12,6 @@ WITH coding(color, code) AS (
         ('white',  9)              
 )
 UPDATE color_code
-SET result = c1.code * 10 + c2.code
+SET result = c1.code || c2.code
 FROM coding c1, coding c2
 WHERE (color1, color2) = (c1.color, c2.color);
