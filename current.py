@@ -24,11 +24,52 @@ SQL_PATH = Path("sql/Exercism/")
 SQL_PATH.mkdir(parents=True, exist_ok=True)
 
 
-# Exersism SQLite path exercises
+# Exercism SQLite path exercises
+
+
+def grains():
+    """Exercism SQLite path exercise 5, Grains:
+    https://exercism.org/tracks/sqlite/exercises/grains"""
+
+    sql_path = SQL_PATH / "Grains"
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE "grains" ("task" TEXT, "square" INT, "result" INT);
+            """)
+        print_query(query, filepath=sql_path / "create_table.sql")        
+        con.execute(query)
+        query = dedent("""\
+            INSERT INTO grains (task, square)
+                VALUES
+                    ("single-square", 1),
+                    ("single-square", 2),
+                    ("single-square", 3),
+                    ("single-square", 4),
+                    ("single-square", 16),
+                    ("single-square", 32),
+                    ("single-square", 64),
+                    ("total", 0);
+            """)
+        print_query(query, filepath=sql_path / "insert_data.sql")
+        con.execute(query)
+        query = dedent("""\
+            UPDATE grains
+
+            """)
+        #print_query(query, filepath=sql_path / "solution.sql")
+        #con.execute(query)
+        query = "SELECT * FROM grains;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+
+
+grains()
 
 
 def gigasecond():
-    """Exersism SQLite path exercise 4, Gigasecond:
+    """Exercism SQLite path exercise 4, Gigasecond:
     https://exercism.org/tracks/sqlite/exercises/gigasecond"""
 
     sql_path = SQL_PATH / "Gigasecond"
@@ -67,7 +108,7 @@ def gigasecond():
 
 
 def difference_of_squares():
-    """Exersism SQLite path exercise 3, Difference-of-Squares:
+    """Exercism SQLite path exercise 3, Difference-of-Squares:
     https://exercism.org/tracks/sqlite/exercises/difference-of-squares"""
 
     sql_path = SQL_PATH / "Difference-of-Squares"
@@ -119,7 +160,7 @@ def difference_of_squares():
 
 
 def darts():
-    """Exersism SQLite path exercise 2, Darts:
+    """Exercism SQLite path exercise 2, Darts:
     https://exercism.org/tracks/sqlite/exercises/darts"""
 
     sql_path = SQL_PATH / "Darts"
