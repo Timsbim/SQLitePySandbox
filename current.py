@@ -66,16 +66,24 @@ def raindrops():
         con.execute(query)
         query = dedent("""\
             UPDATE raindrops
-            SET sound = 
+            SET sound = coalesce(
+                    nullif(
+                        CASE WHEN number % 3 THEN '' ELSE 'Pling' END ||
+                        CASE WHEN number % 5 THEN '' ELSE 'Plang' END ||
+                        CASE WHEN number % 7 THEN '' ELSE 'Plong' END,
+                        ''
+                    ),
+                    number
+                );
             """)
         print_query(query, filepath=sql_path / "solution.sql")
-        #con.execute(query)
+        con.execute(query)
         query = "SELECT * FROM raindrops;"
         res = con.execute(query)
         pprint(res.fetchall())
 
 
-raindrops()
+#raindrops()
 
 
 def leap():
