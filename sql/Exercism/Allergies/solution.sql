@@ -13,3 +13,11 @@ UPDATE allergies
 SET result = CASE WHEN allergies.score & codes.code THEN 'true' ELSE 'false' END
 FROM codes
 WHERE (task, allergies.item) = ('allergicTo', codes.item);
+UPDATE allergies
+SET result = coalesce(
+    (SELECT group_concat(codes.item, ', ')
+     FROM codes
+     WHERE allergies.score & codes.code),
+    ''
+)
+WHERE task = 'list';
