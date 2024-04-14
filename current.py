@@ -27,6 +27,102 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
+def raindrops():
+    """Exercism SQLite path exercise 7, Raindrops:
+    https://exercism.org/tracks/sqlite/exercises/raindrops"""
+
+    sql_path = SQL_PATH / "Raindrops"
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE raindrops (number INT, sound TEXT);
+            """)
+        print_query(query, filepath=sql_path / "create_table.sql")        
+        con.execute(query)
+        query = dedent("""\
+            INSERT INTO raindrops (number)
+                VALUES
+                    (1),
+                    (3),
+                    (5),
+                    (7),
+                    (6),
+                    (8),
+                    (9),
+                    (10),
+                    (14),
+                    (15),
+                    (21),
+                    (25),
+                    (27),
+                    (35),
+                    (49),
+                    (52),
+                    (105),
+                    (3125);
+            """)
+        print_query(query, filepath=sql_path / "insert_data.sql")
+        con.execute(query)
+        query = dedent("""\
+            UPDATE raindrops
+            SET sound = 
+            """)
+        print_query(query, filepath=sql_path / "solution.sql")
+        #con.execute(query)
+        query = "SELECT * FROM raindrops;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+
+
+raindrops()
+
+
+def leap():
+    """Exercism SQLite path exercise 6, Leap:
+    https://exercism.org/tracks/sqlite/exercises/leap"""
+
+    sql_path = SQL_PATH / "Leap"
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE leap (year INT, is_leap BOOL);
+            """)
+        print_query(query, filepath=sql_path / "create_table.sql")        
+        con.execute(query)
+        query = dedent("""\
+            INSERT INTO leap (year)
+                VALUES
+                    (2015),
+                    (1970),
+                    (1996),
+                    (1960),
+                    (2100),
+                    (1900),
+                    (2000),
+                    (2400),
+                    (1800);
+            """)
+        print_query(query, filepath=sql_path / "insert_data.sql")
+        con.execute(query)
+        query = dedent("""\
+            UPDATE leap
+            SET is_leap = CASE
+                    WHEN year % 100 = 0 THEN year % 400 = 0
+                    ELSE year % 4 = 0
+                END;
+            """)
+        print_query(query, filepath=sql_path / "solution.sql")
+        con.execute(query)
+        query = "SELECT * FROM leap;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+
+
+#leap()
+
+
 def grains():
     """Exercism SQLite path exercise 5, Grains:
     https://exercism.org/tracks/sqlite/exercises/grains"""
@@ -74,8 +170,8 @@ def grains():
         print_query(query, filepath=sql_path / "solution_with_rec.sql")
         query = dedent("""\
             UPDATE grains
-            SET result = CASE
-                    WHEN task = 'single-square' THEN power(2, square - 1)
+            SET result = CASE task
+                    WHEN 'single-square' THEN power(2, square - 1)
                     ELSE power(2, 64) - 1
                 END;
             """)
