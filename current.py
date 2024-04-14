@@ -20,7 +20,7 @@ def print_query(query, filepath=None):
 
 # Constants
 
-SQL_PATH = Path("sql/Exersism/")
+SQL_PATH = Path("sql/Exercism/")
 SQL_PATH.mkdir(parents=True, exist_ok=True)
 
 
