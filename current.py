@@ -36,36 +36,57 @@ def grains():
     
     with sqlite.connect(":memory:") as con:
         query = dedent("""\
-            CREATE TABLE "grains" ("task" TEXT, "square" INT, "result" INT);
+            CREATE TABLE grains (task TEXT, square INT, result INT);
             """)
         print_query(query, filepath=sql_path / "create_table.sql")        
         con.execute(query)
         query = dedent("""\
             INSERT INTO grains (task, square)
                 VALUES
-                    ("single-square", 1),
-                    ("single-square", 2),
-                    ("single-square", 3),
-                    ("single-square", 4),
-                    ("single-square", 16),
-                    ("single-square", 32),
-                    ("single-square", 64),
-                    ("total", 0);
+                    ('single-square', 1),
+                    ('single-square', 2),
+                    ('single-square', 3),
+                    ('single-square', 4),
+                    ('single-square', 16),
+                    ('single-square', 32),
+                    ('single-square', 64),
+                    ('total', 0);
             """)
         print_query(query, filepath=sql_path / "insert_data.sql")
         con.execute(query)
         query = dedent("""\
+            WITH RECURSIVE counts(square, grains) AS (
+                SELECT 1, 1
+                UNION ALL
+                SELECT square + 1, grains * 2 FROM counts
+                LIMIT 65
+            )
             UPDATE grains
-
+            SET result = CASE
+                    WHEN task = 'single-square' THEN counts.grains
+                    ELSE counts.grains - 1
+                END
+            FROM counts
+            WHERE
+                (grains.task = 'single-square' AND grains.square = counts.square)
+                OR (grains.task = 'total' AND counts.square = 65);
             """)
-        #print_query(query, filepath=sql_path / "solution.sql")
-        #con.execute(query)
+        print_query(query, filepath=sql_path / "solution_with_rec.sql")
+        query = dedent("""\
+            UPDATE grains
+            SET result = CASE
+                    WHEN task = 'single-square' THEN power(2, square - 1)
+                    ELSE power(2, 64) - 1
+                END;
+            """)
+        print_query(query, filepath=sql_path / "solution.sql")
+        con.execute(query)
         query = "SELECT * FROM grains;"
         res = con.execute(query)
         pprint(res.fetchall())
 
 
-grains()
+#grains()
 
 
 def gigasecond():

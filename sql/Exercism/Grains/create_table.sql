@@ -1,1 +1,1 @@
-CREATE TABLE "grains" ("task" TEXT, "square" INT, "result" INT);
+CREATE TABLE grains (task TEXT, square INT, result INT);
