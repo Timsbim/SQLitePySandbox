@@ -4,6 +4,9 @@ from textwrap import dedent, indent
 import sqlite3 as sqlite
 
 
+print(f"\nSQLite version: {sqlite.sqlite_version}", end="\n\n")
+
+
 # Helper functions
 
 
@@ -96,66 +99,81 @@ def allergies():
                     ('list', '', 257);
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
-        query = dedent("""\
+        con.executescript(query)
+        query_1 = dedent("""\
             CREATE TABLE codes (item TEXT, code INT);
             INSERT INTO codes
                 VALUES
-                    ('eggs', 1),
-                    ('peanuts', 2),
-                    ('shellfish', 4),
-                    ('strawberries', 8),
-                    ('tomatoes', 16),
-                    ('chocolate', 32),
-                    ('pollen', 64),
-                    ('cats', 128);
+                    ('eggs', 1), ('peanuts', 2), ('shellfish', 4), ('strawberries', 8),
+                    ('tomatoes', 16), ('chocolate', 32), ('pollen', 64), ('cats', 128);
             UPDATE allergies
-            SET result = CASE WHEN allergies.score & codes.code THEN 'true' ELSE 'false' END
-            FROM codes
-            WHERE (task, allergies.item) = ('allergicTo', codes.item);
+            SET result = CASE WHEN allergies.score & c.code THEN 'true' ELSE 'false' END
+            FROM codes c
+            WHERE task = 'allergicTo' AND allergies.item = c.item;
             UPDATE allergies
             SET result = coalesce(
-                    (SELECT group_concat(codes.item, ', ')
-                     FROM codes
-                     WHERE allergies.score & codes.code),
-                    ''
+                    (SELECT group_concat(c.item, ', ')
+                     FROM codes c
+                     WHERE allergies.score & c.code),
+                     ''
                 )
             WHERE task = 'list';
             """)
-        print_query(query, filepath=sql_path / "solution_1.sql")   
-        query = dedent("""\
+        print_query(query_1, filepath=sql_path / "solution_1.sql") 
+        query_2 = dedent("""\
             WITH codes(item, code) AS (
                 VALUES
-                    ('eggs', 1),
-                    ('peanuts', 2),
-                    ('shellfish', 4),
-                    ('strawberries', 8),
-                    ('tomatoes', 16),
-                    ('chocolate', 32),
-                    ('pollen', 64),
-                    ('cats', 128)
+                    ('eggs', 1), ('peanuts', 2), ('shellfish', 4), ('strawberries', 8),
+                    ('tomatoes', 16), ('chocolate', 32), ('pollen', 64), ('cats', 128)
             )
             UPDATE allergies
             SET result = CASE task
                     WHEN 'allergicTo' THEN
-                        CASE WHEN allergies.score & codes.code THEN 'true' ELSE 'false' END
+                        CASE WHEN score & c.code THEN 'true' ELSE 'false' END
                     ELSE coalesce(
                             (SELECT group_concat(codes.item, ', ')
                              FROM codes
-                             WHERE allergies.score & codes.code),
+                             WHERE score & codes.code),
                             ''
                         )
                 END
-            FROM codes
-            WHERE (task, allergies.item) = ('allergicTo', codes.item) OR task = 'list';
+            FROM codes c
+            WHERE (task, allergies.item) = ('allergicTo', c.item) OR task = 'list';
             """)
-        print_query(query, filepath=sql_path / "solution_2.sql")   
-        con.executescript(query)
+        print_query(query_2, filepath=sql_path / "solution_2.sql")   
+        query_3 = dedent("""\
+            WITH
+                codes(item, code) AS (
+                    VALUES
+                        ('eggs', 1), ('peanuts', 2), ('shellfish', 4), ('strawberries', 8),
+                        ('tomatoes', 16), ('chocolate', 32), ('pollen', 64), ('cats', 128)
+                ),
+                results(score, result) AS (
+                    SELECT score, group_concat(codes.item, ', ')
+                    FROM (SELECT DISTINCT score FROM allergies WHERE task = 'list'), codes
+                    WHERE score & code
+                    GROUP BY score
+                    UNION SELECT 0, ''
+                )
+            UPDATE allergies
+            SET result = CASE task
+                    WHEN 'allergicTo' THEN
+                        CASE WHEN allergies.score & c.code THEN 'true' ELSE 'false' END
+                    ELSE r.result
+                END
+            FROM codes c, results r
+            WHERE
+                (task, allergies.item) = ('allergicTo', c.item)
+                OR (task, allergies.score) = ('list', r.score);
+            """)
+        print_query(query_3, filepath=sql_path / "solution_3.sql")   
+        con.executescript(query_3)
         query = "SELECT * FROM allergies;"
         res = con.execute(query)
         pprint(res.fetchall())
 
 
-allergies()
+#allergies()
 
 
 def two_fer():
