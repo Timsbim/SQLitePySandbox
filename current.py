@@ -30,6 +30,44 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
+def collatz():
+    """Exercism SQLite path exercise 17, Collatz Conjecture:
+    https://exercism.org/tracks/sqlite/exercises/collatz-conjecture"""
+
+    sql_path = SQL_PATH / "Collatz-Conjecture"
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE collatz (number INTEGER, steps INTEGER);
+            INSERT INTO collatz (number)
+                VALUES (1), (16), (12), (1000000);
+            """)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
+        query = dedent("""\
+            WITH RECURSIVE steps(number, n, step) AS (
+                SELECT number, number, 0 FROM collatz
+                UNION ALL
+                SELECT number, CASE WHEN n % 2 THEN 3 * n + 1 ELSE n / 2 END, step + 1
+                FROM steps
+                WHERE n != 1
+            )
+            UPDATE collatz
+            SET steps = steps.step
+            FROM steps 
+            WHERE (collatz.number, 1) = (steps.number, n);
+            """)
+        print_query(query, filepath=sql_path / "solution.sql")        
+        con.execute(query)
+        query = "SELECT * FROM collatz;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+
+
+#collatz()
+
+
 def allergies():
     """Exercism SQLite path exercise 11, Allergies:
     https://exercism.org/tracks/sqlite/exercises/allergies"""
@@ -187,10 +225,7 @@ def two_fer():
         query = dedent("""\
             CREATE TABLE twofer (input TEXT, response TEXT);
             INSERT INTO twofer (input)
-                VALUES
-                    (''),
-                    ('Alice'),
-                    ('Bob');
+                VALUES (''), ('Alice'), ('Bob');
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
         con.executescript(query)
@@ -270,10 +305,7 @@ def resistor_color():
         query = dedent("""\
             CREATE TABLE color_code (color TEXT, result INT);
             INSERT INTO color_code (color)
-                VALUES
-                    ('black'),
-                    ('white'),
-                    ('orange');
+                VALUES ('black'), ('white'), ('orange');
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
         con.executescript(query)
