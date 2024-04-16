@@ -31,7 +31,7 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 
 
 def armstrong_numbers():
-    """Exercism SQLite path exercise 16, Collatz Armstrong Numbers:
+    """Exercism SQLite path exercise 16, Armstrong Numbers:
     https://exercism.org/tracks/sqlite/exercises/armstrong-numbers"""
 
     sql_path = SQL_PATH / "Armstrong-Numbers"
