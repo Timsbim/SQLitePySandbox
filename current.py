@@ -30,6 +30,45 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
+def armstrong_numbers():
+    """Exercism SQLite path exercise 16, Collatz Armstrong Numbers:
+    https://exercism.org/tracks/sqlite/exercises/armstrong-numbers"""
+
+    sql_path = SQL_PATH / "Armstrong-Numbers"
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE armstrong_numbers (number INT, result BOOLEAN);
+            INSERT INTO armstrong_numbers(number)
+                VALUES (0), (5), (10), (153), (100), (9474), (9475), (9926315), (9926314);
+            """)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
+        query = dedent("""\
+            WITH RECURSIVE sums(number, string, pos, digit, sum) AS (
+                SELECT number, CAST(number AS TEXT), 1, 0, 0 FROM armstrong_numbers
+                UNION ALL
+                SELECT number,
+                       string,
+                       pos + 1,
+                       CAST(substr(string, pos, 1) AS INTEGER),
+                       sum + pow(digit, length(string)) 
+                FROM sums
+                WHERE length(string) >= pos
+            )
+            SELECT * FROM sums ORDER BY number, pos;
+            """)
+        print_query(query, filepath=sql_path / "solution.sql")
+        #con.execute(query)
+        #query = "SELECT * FROM armstrong_numbers;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+
+
+armstrong_numbers()
+
+
 def high_scores():
     """Exercism SQLite path exercise 18, High Scores:
     https://exercism.org/tracks/sqlite/exercises/high-scores"""
@@ -102,7 +141,7 @@ def high_scores():
         pprint(res.fetchall())
 
 
-high_scores()
+#high_scores()
 
 
 def luhn():
