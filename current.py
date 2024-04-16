@@ -30,6 +30,99 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
+def luhn():
+    """Exercism SQLite path exercise 18, Luhn:
+    https://exercism.org/tracks/sqlite/exercises/luhn"""
+ 
+    sql_path = SQL_PATH / "Luhn"
+    sql_path.mkdir(parents=True, exist_ok=True)
+   
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE luhn (value TEXT, result Boolean);
+            INSERT INTO luhn (value)
+               VALUES
+                    ("1"),
+                    ("0"),
+                    ("059"),
+                    ("59"),
+                    ("055 444 285"),
+                    ("055 444 286"),
+                    ("8273 1232 7352 0569"),
+                    ("1 2345 6789 1234 5678 9012"),
+                    ("1 2345 6789 1234 5678 9013"),
+                    ("095 245 88"),
+                    ("234 567 891 234"),
+                    ("059a"),
+                    ("055-444-285"),
+                    ("055# 444$ 285"),
+                    (" 0"),
+                    ("0000 0"),
+                    ("091"),
+                    ("9999999999 9999999999 9999999999 9999999999"),
+                    ("109"),
+                    ("055b 444 285"),
+                    (":9"),
+                    ("59%59");
+            """)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
+        query_1 = dedent("""\
+            UPDATE luhn SET result = 0;
+            WITH RECURSIVE
+            clean(value, clean) AS (
+                SELECT value, replace(value, ' ', '') FROM luhn
+                WHERE NOT value GLOB '*[^0-9 ]*'
+            ),
+            sums(value, n, digit, sum, rest) AS (
+                SELECT value, 1, 0, 0, '0' || clean FROM clean WHERE length(clean) > 1
+                UNION ALL
+                SELECT
+                    value, n + 1,
+                    CAST(substr(rest, length(rest)) AS INTEGER),
+                    sum + iif(switch > 0, iif(digit < 5, 2 * digit, 2 * digit - 9), digit)
+                    substr(rest, 0, length(rest))
+                FROM sums
+                WHERE length(rest) > 0
+            )
+            UPDATE luhn
+            SET result = sums.sum % 10 = 0
+            FROM sums
+            WHERE (luhn.value, rest) = (sums.value, '');
+            """)
+        print_query(query_1, filepath=sql_path / "solution_1.sql")
+        query_2 = dedent("""\
+            UPDATE luhn SET result = 0;
+            WITH RECURSIVE clean(value, clean) AS (
+                SELECT value, replace(value, ' ', '') FROM luhn
+                WHERE NOT value GLOB '*[^0-9 ]*'
+            ),
+            sums(value, clean, pos, switch, digit, sum) AS (
+                SELECT value, '0' || clean, length(clean) + 1, 1, 0, 0 FROM clean
+                WHERE length(clean) > 1
+                UNION ALL
+                SELECT
+                    value, clean, pos - 1, switch * -1,
+                    CAST(substr(clean, pos, 1) AS INTEGER),
+                    sum + iif(switch > 0, iif(digit < 5, 2 * digit, 2 * digit - 9), digit)
+                FROM sums
+                WHERE pos > 0
+            )
+            UPDATE luhn
+            SET result = sums.sum % 10 = 0
+            FROM sums
+            WHERE (luhn.value, pos) = (sums.value, 0);
+            """)
+        print_query(query_2, filepath=sql_path / "solution_2.sql")
+        con.executescript(query_2)
+        query = "SELECT * FROM luhn;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+ 
+ 
+#luhn()
+
+
 def collatz():
     """Exercism SQLite path exercise 17, Collatz Conjecture:
     https://exercism.org/tracks/sqlite/exercises/collatz-conjecture"""
