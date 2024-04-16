@@ -31,7 +31,7 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 
 
 def luhn():
-    """Exercism SQLite path exercise 18, Luhn:
+    """Exercism SQLite path exercise 20, Luhn:
     https://exercism.org/tracks/sqlite/exercises/luhn"""
  
     sql_path = SQL_PATH / "Luhn"
@@ -121,6 +121,63 @@ def luhn():
  
  
 #luhn()
+
+
+def isogram():
+    """Exercism SQLite path exercise 19, Isogram:
+    https://exercism.org/tracks/sqlite/exercises/isogram"""
+ 
+    sql_path = SQL_PATH / "Isogram"
+    sql_path.mkdir(parents=True, exist_ok=True)
+   
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE isogram (phrase TEXT, is_isogram INT);
+            INSERT INTO isogram (phrase)
+                VALUES
+                    (''),
+                    ('isogram'),
+                    ('eleven'),
+                    ('zzyzx'),
+                    ('subdermatoglyphic'),
+                    ('Alphabet'),
+                    ('alphAbet'),
+                    ('thumbscrew-japingly'),
+                    ('thumbscrew-jappingly'),
+                    ('six-year-old'),
+                    ('Emily Jung Schwartzkopf'),
+                    ('accentor'),
+                    ('angola'),
+                    ('up-to-date');
+            """)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
+        query = dedent("""\
+            WITH RECURSIVE letters(phrase, low, pos, letter) AS (
+                SELECT phrase, lower(phrase), 1, lower(substr(phrase, 1, 1)) FROM isogram
+                UNION ALL
+                SELECT phrase, low, pos + 1, substr(low, pos + 1, 1) FROM letters
+                WHERE length(phrase) > pos
+            ),
+            checks(phrase, is_isogram) AS (
+                SELECT phrase, count(letter) = count(DISTINCT letter) FROM letters
+                WHERE letter GLOB '[a-z]'
+                GROUP BY phrase
+                UNION SELECT '', 1
+            )
+            UPDATE isogram
+            SET is_isogram = checks.is_isogram
+            FROM checks
+            WHERE isogram.phrase = checks.phrase;
+            """)
+        print_query(query, filepath=sql_path / "solution.txt")
+        con.executescript(query)
+        query = "SELECT * FROM isogram;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+
+
+#isogram()
 
 
 def collatz():
