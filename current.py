@@ -46,7 +46,7 @@ def high_scores():
             CREATE TABLE scores (game_id TEXT, score INT);
             CREATE TABLE results (game_id TEXT, property TEXT, result TEXT);
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
+        #print_query(query, filepath=sql_path / "build_table.sql")
         con.executescript(query)
         with open(data_path / "scores.csv", "r") as file:
             con.executemany(
@@ -80,18 +80,25 @@ def high_scores():
         query = dedent("""\
             WITH selection(game_id) AS (
                 SELECT DISTINCT game_id FROM results
-                WHERE property IN ('personalTopThree')
+                WHERE property = 'personalTopThree'
             ),
-            part_2(game_id, row, score) AS (
+            part_2(game_id, row_1, row_2, score) AS (
                 SELECT game_id,
                        row_number() OVER(PARTITION BY game_id ORDER BY score DESC),
+                       row_number() OVER(PARTITION BY game_id),
                        score
                 FROM scores
                 WHERE game_id IN selection
             )
-            SELECT * FROM part_2;
+            SELECT * FROM part_2
+            WHERE row_1 <= 3;
+            --UPDATE results
+            --SET result = group_concat(score, ',')
+            --FROM part_2
+            --WHERE results.game_id = part_2.game_id
+            --      AND row_1 <= 3;
             """)
-        #con.execute(query)        
+        #con.execute(query)
         #query = "SELECT * FROM results;"
         res = con.execute(query)
         pprint(res.fetchall())
