@@ -1,6 +1,7 @@
 from pathlib import Path
 from pprint import pprint
 from textwrap import dedent, indent
+import csv
 import sqlite3 as sqlite
 
 
@@ -23,6 +24,8 @@ def print_query(query, filepath=None):
 
 # Constants
 
+DATA_PATH = Path("data/Exercsim/")
+DATA_PATH.mkdir(parents=True, exist_ok=True)
 SQL_PATH = Path("sql/Exercism/")
 SQL_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -30,118 +33,56 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
-def armstrong_numbers():
-    """Exercism SQLite path exercise 16, Armstrong Numbers:
-    https://exercism.org/tracks/sqlite/exercises/armstrong-numbers"""
-
-    sql_path = SQL_PATH / "Armstrong-Numbers"
-    sql_path.mkdir(parents=True, exist_ok=True)
-    
-    with sqlite.connect(":memory:") as con:
-        query = dedent("""\
-            CREATE TABLE armstrong_numbers (number INT, result BOOLEAN);
-            INSERT INTO armstrong_numbers(number)
-                VALUES (0), (5), (10), (153), (100), (9474), (9475), (9926315), (9926314);
-            """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        query = dedent("""\
-            WITH RECURSIVE sums(number, string, pos, digit, sum) AS (
-                SELECT number, CAST(number AS TEXT), 1, 0, 0 FROM armstrong_numbers
-                UNION ALL
-                SELECT number,
-                       string,
-                       pos + 1,
-                       CAST(substr(string, pos, 1) AS INTEGER),
-                       sum + pow(digit, length(string)) 
-                FROM sums
-                WHERE length(string) >= pos
-            )
-            SELECT * FROM sums ORDER BY number, pos;
-            """)
-        print_query(query, filepath=sql_path / "solution.sql")
-        #con.execute(query)
-        #query = "SELECT * FROM armstrong_numbers;"
-        res = con.execute(query)
-        pprint(res.fetchall())
-
-
-armstrong_numbers()
-
-
 def high_scores():
     """Exercism SQLite path exercise 18, High Scores:
     https://exercism.org/tracks/sqlite/exercises/high-scores"""
-
+ 
+    data_path = DATA_PATH / "High-Scores"
+    data_path.mkdir(parents=True, exist_ok=True)   
     sql_path = SQL_PATH / "High-Scores"
     sql_path.mkdir(parents=True, exist_ok=True)
-    
+   
     with sqlite.connect(":memory:") as con:
         query = dedent("""\
             CREATE TABLE scores (game_id TEXT, score INT);
             CREATE TABLE results (game_id TEXT, property TEXT, result TEXT);
-            INSERT INTO results(game_id, property)
-                VALUES
-                    ('1035eb93-2208-4c22-bab8-fef06769a73c', 'scores'),
-                    ('6aa5dbf5-78fa-4375-b22c-ffaa989732d2', 'latest'),
-                    ('b661a2e1-aebf-4f50-9139-0fb817dd12c6', 'personalBest'),
-                    ('3d996a97-c81c-4642-9afc-80b80dc14015', 'personalTopThree'),
-                    ('1084ecb5-3eb4-46fe-a816-e40331a4e83a', 'personalTopThree'),
-                    ('e6465b6b-5a11-4936-bfe3-35241c4f4f16', 'personalTopThree'),
-                    ('f73b02af-c8fd-41c9-91b9-c86eaa86bce2', 'personalTopThree'),
-                    ('16608eae-f60f-4a88-800e-aabce5df2865', 'personalTopThree'),
-                    ('2df075f9-fec9-4756-8f40-98c52a11504f', 'latest'),
-                    ('809c4058-7eb1-4206-b01e-79238b9b71bc', 'scores'),
-                    ('ddb0efc0-9a86-4f82-bc30-21ae0bdc6418', 'latest'),
-                    ('6a0fd2d1-4cc4-46b9-a5bb-2fb667ca2364', 'scores');
             """)
         con.executescript(query)
-        inputs = (
-            ('1035eb93-2208-4c22-bab8-fef06769a73c', '30,50,20,70'),
-            ('6aa5dbf5-78fa-4375-b22c-ffaa989732d2', '100,0,90,30'),
-            ('b661a2e1-aebf-4f50-9139-0fb817dd12c6', '40,100,70'),
-            ('3d996a97-c81c-4642-9afc-80b80dc14015', '10,30,90,30,100,20,10,0,30,40,40,70,70'),
-            ('1084ecb5-3eb4-46fe-a816-e40331a4e83a', '20,10,30'),
-            ('e6465b6b-5a11-4936-bfe3-35241c4f4f16', '40,20,40,30'),
-            ('f73b02af-c8fd-41c9-91b9-c86eaa86bce2', '30,70'),
-            ('16608eae-f60f-4a88-800e-aabce5df2865', '40'),
-            ('2df075f9-fec9-4756-8f40-98c52a11504f', '70,50,20,30'),
-            ('809c4058-7eb1-4206-b01e-79238b9b71bc', '30,50,20,70'),
-            ('ddb0efc0-9a86-4f82-bc30-21ae0bdc6418', '20,70,15,25,30'),
-            ('6a0fd2d1-4cc4-46b9-a5bb-2fb667ca2364', '20,70,15,25,30')
-        )
-        data = (
-            (ID, int(score))
-            for ID, string in inputs
-            for score in string.split(",")
-        )
-        con.executemany("INSERT INTO scores VALUES(?, ?)", data)
+        with open(data_path / "scores.csv", "r") as file:
+            con.executemany(
+                "INSERT INTO scores VALUES(?, ?);",
+                ((ID, int(score)) for ID, score in csv.reader(file))
+            )
+        with open(data_path / "results.csv", "r") as file:
+            con.executemany(
+                "INSERT INTO results(game_id, property) VALUES(?, ?);",
+                (row[:2] for row in csv.reader(file))
+            )
         query = dedent("""\
-            SELECT game_id,
-                   group_concat(score, ',') scores,
-                   max(score) personalBest
-            FROM scores
-            GROUP BY game_id
+            WITH selection(game_id) AS (
+                SELECT DISTINCT game_id FROM results
+                WHERE property IN ('scores', 'personalBest')
+            ),
+            part_1 (game_id, scores, personalBest) AS (
+                SELECT game_id, group_concat(score, ','), max(score) FROM scores
+                WHERE game_id IN selection
+                GROUP BY game_id
+            )
+            UPDATE results
+            SET result = CASE property
+                    WHEN 'scores' THEN part_1.scores ELSE personalBest
+                END
+            FROM part_1
+            WHERE results.game_id = part_1.game_id;
             """)
-        query = dedent("""\
-            SELECT results.game_id,
-                   (SELECT group_concat(score, '-')
-                    FROM scores
-                    WHERE scores.game_id = results.game_id
-                    ORDER BY score ASC
-                    LIMIT 3)
-            FROM results, scores
-            WHERE results.game_id = scores.game_id
-            GROUP BY results.game_id
-            """)
-        #print_query(query, filepath=sql_path / "solution.sql")        
-        #con.execute(query)
-        #query = "SELECT * FROM results;"
+        #print_query(query, filepath=sql_path / "solution.sql")       
+        con.execute(query)
+        query = "SELECT * FROM results;"
         res = con.execute(query)
         pprint(res.fetchall())
 
 
-#high_scores()
+high_scores()
 
 
 def luhn():
@@ -330,6 +271,139 @@ def collatz():
 
 
 #collatz()
+
+
+def armstrong_numbers():
+    """Exercism SQLite path exercise 16, Armstrong Numbers:
+    https://exercism.org/tracks/sqlite/exercises/armstrong-numbers"""
+ 
+    sql_path = SQL_PATH / "Armstrong-Numbers"
+    sql_path.mkdir(parents=True, exist_ok=True)
+   
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE "armstrong-numbers" (number INT, result BOOLEAN);
+            INSERT INTO "armstrong-numbers"(number)
+               VALUES (0), (5), (10), (153), (100), (9474),
+                      (9475), (9926315), (9926314);
+            """)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
+        query = dedent("""\
+            WITH RECURSIVE sums(number, string, e, pos, sum) AS (
+                SELECT number,
+                       CAST(number AS TEXT),
+                       length(CAST(number AS TEXT)),
+                       0, 0
+                FROM "armstrong-numbers"
+                UNION ALL
+                SELECT number, string, e,  pos + 1,
+                       sum + power(CAST(substr(string, pos + 1, 1) AS INTEGER), e)
+                FROM sums
+                WHERE e >= pos
+            )
+            UPDATE "armstrong-numbers"
+            SET result = sums.number = sums.sum
+            FROM sums
+            WHERE "armstrong-numbers".number = sums.number AND pos = e + 1;
+            """)
+        print_query(query, filepath=sql_path / "solution.sql")
+        con.execute(query)
+        query = """SELECT * FROM "armstrong-numbers";"""
+        res = con.execute(query)
+        pprint(res.fetchall())
+
+
+#armstrong_numbers()
+
+
+def nucleotide_count():
+    """Exercism SQLite path exercise 15, Nucleotide Count:
+    https://exercism.org/tracks/sqlite/exercises/nucleotide-count"""
+ 
+    sql_path = SQL_PATH / "Nucleotide-Count"
+    sql_path.mkdir(parents=True, exist_ok=True)
+   
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE "nucleotide-count" (
+                strand TEXT CHECK (NOT "strand" GLOB '*[^ACGT]*'),
+                result TEXT
+            );
+            INSERT INTO "nucleotide-count" (strand)
+                VALUES
+                    (''), ('G'), ('GGGGGGG'),
+                    ('AGCTTTTCATTCTGACTGCAACGGGCAATATGTCTCTGTGTGGATTAAAAAAAGAGTGTCTGATAGCAGC');
+            """)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
+        query_1 = dedent("""\
+            WITH RECURSIVE counts(strand, pos, n) AS (
+                SELECT strand, 1, json('{"A":0,"C":0,"G":0,"T":0}') FROM "nucleotide-count"
+                UNION ALL
+                SELECT
+                    strand,
+                    pos + 1,
+                    CASE substr(strand, pos, 1)
+                        WHEN 'A' THEN json_set(n, '$.A', (n ->> '$.A') + 1)
+                        WHEN 'C' THEN json_set(n, '$.C', (n ->> '$.C') + 1)
+                        WHEN 'G' THEN json_set(n, '$.G', (n ->> '$.G') + 1)
+                        ELSE json_set(n, '$.T', (n ->> '$.T') + 1)
+                    END
+                FROM counts
+                WHERE pos <= length(strand)
+            )
+            UPDATE "nucleotide-count"
+            SET result = n
+            FROM counts
+            WHERE "nucleotide-count".strand = counts.strand
+                  AND pos = length(counts.strand) + 1;
+            """)
+        print_query(query_1, filepath=sql_path / "solution_1.sql")       
+        query_2 = dedent("""\
+            WITH RECURSIVE counts(strand, pos, n, jstr) AS (
+                SELECT strand, 2,
+                       format('$.%s', substr(strand, 1, 1)),
+                       json('{"A":0,"C":0,"G":0,"T":0}')
+                FROM "nucleotide-count"
+                UNION ALL
+                SELECT strand, pos + 1,
+                       format('$.%s', substr(strand, pos, 1)),
+                       json_set(jstr, n, (jstr ->> n) + 1)
+                FROM counts
+                WHERE pos <= length(strand) + 1
+            )
+            UPDATE "nucleotide-count"
+            SET result = jstr
+            FROM counts
+            WHERE "nucleotide-count".strand = counts.strand
+                  AND pos = length(counts.strand) + 2;
+            """)
+        print_query(query_2, filepath=sql_path / "solution_2.sql")
+        query_3 = dedent("""\
+            WITH RECURSIVE counts(strand, pos, n, A, C, G, T) AS (
+                SELECT strand, 2, substr(strand, 1, 1), 0, 0, 0, 0 FROM "nucleotide-count"
+                UNION ALL
+                SELECT strand, pos + 1, substr(strand, pos, 1),
+                       iif(n = 'A', A + 1, A), iif(n = 'C', C + 1, C),
+                       iif(n = 'G', G + 1, G), iif(n = 'T', T + 1, T)
+                FROM counts
+                WHERE pos <= length(strand) + 1
+            )
+            UPDATE "nucleotide-count"
+            SET result = format('{"A":%i,"C":%i,"G":%i,"T":%i}', A, C, G, T)
+            FROM counts
+            WHERE "nucleotide-count".strand = counts.strand
+                  AND pos = length(counts.strand) + 2;
+            """)
+        print_query(query_3, filepath=sql_path / "solution_3.sql")
+        con.execute(query_3)
+        query = """SELECT * FROM "nucleotide-count";"""
+        res = con.execute(query)
+        pprint(res.fetchall())
+ 
+ 
+#nucleotide_count()
 
 
 def allergies():

@@ -1,12 +1,16 @@
-WITH RECURSIVE sums(number, string, pos, digit, sum) AS (
-    SELECT number, CAST(number AS TEXT), 1, 0, 0 FROM armstrong_numbers
-    UNION ALL
+WITH RECURSIVE sums(number, string, e, pos, sum) AS (
     SELECT number,
-           string,
-           pos + 1,
-           CAST(substr(string, pos, 1) AS INTEGER),
-           sum + pow(digit, length(string)) 
+           CAST(number AS TEXT),
+           length(CAST(number AS TEXT)),
+           0, 0
+    FROM "armstrong-numbers"
+    UNION ALL
+    SELECT number, string, e,  pos + 1,
+           sum + power(CAST(substr(string, pos + 1, 1) AS INTEGER), e)
     FROM sums
-    WHERE length(string) >= pos
+    WHERE e >= pos
 )
-SELECT * FROM sums ORDER BY number, pos;
+UPDATE "armstrong-numbers"
+SET result = sums.number = sums.sum
+FROM sums
+WHERE "armstrong-numbers".number = sums.number AND pos = e + 1;
