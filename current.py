@@ -38,7 +38,6 @@ def high_scores():
     https://exercism.org/tracks/sqlite/exercises/high-scores"""
  
     data_path = DATA_PATH / "High-Scores"
-    data_path.mkdir(parents=True, exist_ok=True)   
     sql_path = SQL_PATH / "High-Scores"
     sql_path.mkdir(parents=True, exist_ok=True)
    
@@ -47,6 +46,7 @@ def high_scores():
             CREATE TABLE scores (game_id TEXT, score INT);
             CREATE TABLE results (game_id TEXT, property TEXT, result TEXT);
             """)
+        print_query(query, filepath=sql_path / "build_table.sql")
         con.executescript(query)
         with open(data_path / "scores.csv", "r") as file:
             con.executemany(
@@ -89,39 +89,19 @@ def luhn():
     """Exercism SQLite path exercise 20, Luhn:
     https://exercism.org/tracks/sqlite/exercises/luhn"""
  
+    data_path = DATA_PATH / "Luhn"
     sql_path = SQL_PATH / "Luhn"
     sql_path.mkdir(parents=True, exist_ok=True)
    
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
-            CREATE TABLE luhn (value TEXT, result Boolean);
-            INSERT INTO luhn (value)
-               VALUES
-                    ("1"),
-                    ("0"),
-                    ("059"),
-                    ("59"),
-                    ("055 444 285"),
-                    ("055 444 286"),
-                    ("8273 1232 7352 0569"),
-                    ("1 2345 6789 1234 5678 9012"),
-                    ("1 2345 6789 1234 5678 9013"),
-                    ("095 245 88"),
-                    ("234 567 891 234"),
-                    ("059a"),
-                    ("055-444-285"),
-                    ("055# 444$ 285"),
-                    (" 0"),
-                    ("0000 0"),
-                    ("091"),
-                    ("9999999999 9999999999 9999999999 9999999999"),
-                    ("109"),
-                    ("055b 444 285"),
-                    (":9"),
-                    ("59%59");
-            """)
+        query = """CREATE TABLE luhn (value TEXT, result Boolean);""";
         print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
+        con.execute(query)
+        with open(data_path / "data.csv", "r") as file:
+            con.executemany(
+                "INSERT INTO luhn (value) VALUES (?)",
+                (row[:1] for row in csv.reader(file))
+            )
         query_1 = dedent("""\
             UPDATE luhn SET result = 0;
             WITH RECURSIVE
@@ -190,20 +170,11 @@ def isogram():
             CREATE TABLE isogram (phrase TEXT, is_isogram INT);
             INSERT INTO isogram (phrase)
                 VALUES
-                    (''),
-                    ('isogram'),
-                    ('eleven'),
-                    ('zzyzx'),
-                    ('subdermatoglyphic'),
-                    ('Alphabet'),
-                    ('alphAbet'),
-                    ('thumbscrew-japingly'),
-                    ('thumbscrew-jappingly'),
-                    ('six-year-old'),
-                    ('Emily Jung Schwartzkopf'),
-                    ('accentor'),
-                    ('angola'),
-                    ('up-to-date');
+                    (''), ('isogram'), ('eleven'), ('zzyzx'),
+                    ('subdermatoglyphic'), ('Alphabet'), ('alphAbet'),
+                    ('thumbscrew-japingly'), ('thumbscrew-jappingly'),
+                    ('six-year-old'), ('Emily Jung Schwartzkopf'),
+                    ('accentor'), ('angola'), ('up-to-date');
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
         con.executescript(query)
@@ -225,7 +196,7 @@ def isogram():
             FROM checks
             WHERE isogram.phrase = checks.phrase;
             """)
-        print_query(query, filepath=sql_path / "solution.txt")
+        print_query(query, filepath=sql_path / "solution.sql")
         con.executescript(query)
         query = "SELECT * FROM isogram;"
         res = con.execute(query)
@@ -284,8 +255,9 @@ def armstrong_numbers():
         query = dedent("""\
             CREATE TABLE "armstrong-numbers" (number INT, result BOOLEAN);
             INSERT INTO "armstrong-numbers"(number)
-               VALUES (0), (5), (10), (153), (100), (9474),
-                      (9475), (9926315), (9926314);
+               VALUES
+                    (0), (5), (10), (153), (100), (9474), (9475),
+                    (9926315), (9926314);
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
         con.executescript(query)
@@ -320,7 +292,8 @@ def armstrong_numbers():
 def nucleotide_count():
     """Exercism SQLite path exercise 15, Nucleotide Count:
     https://exercism.org/tracks/sqlite/exercises/nucleotide-count"""
- 
+
+    data_path = DATA_PATH / "Nucleotide-Count"
     sql_path = SQL_PATH / "Nucleotide-Count"
     sql_path.mkdir(parents=True, exist_ok=True)
    
@@ -330,13 +303,14 @@ def nucleotide_count():
                 strand TEXT CHECK (NOT "strand" GLOB '*[^ACGT]*'),
                 result TEXT
             );
-            INSERT INTO "nucleotide-count" (strand)
-                VALUES
-                    (''), ('G'), ('GGGGGGG'),
-                    ('AGCTTTTCATTCTGACTGCAACGGGCAATATGTCTCTGTGTGGATTAAAAAAAGAGTGTCTGATAGCAGC');
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
+        con.execute(query)
+        with open(data_path / "data.csv", "r") as file:
+            con.executemany(
+                """INSERT INTO "nucleotide-count" (strand) VALUES (?);""",
+                (row[:1] for row in csv.reader(file))
+            )
         query_1 = dedent("""\
             WITH RECURSIVE counts(strand, pos, n) AS (
                 SELECT strand, 1, json('{"A":0,"C":0,"G":0,"T":0}') FROM "nucleotide-count"
@@ -410,6 +384,7 @@ def allergies():
     """Exercism SQLite path exercise 11, Allergies:
     https://exercism.org/tracks/sqlite/exercises/allergies"""
 
+    data_path = DATA_PATH / "Allergies"
     sql_path = SQL_PATH / "Allergies"
     sql_path.mkdir(parents=True, exist_ok=True)
     
@@ -421,61 +396,14 @@ def allergies():
                 score INT NOT NULL,
                 result TEXT
             );
-            INSERT INTO allergies (task, item, score)
-                VALUES
-                    ('allergicTo', 'eggs', 0),
-                    ('allergicTo', 'eggs', 1),
-                    ('allergicTo', 'eggs', 3),
-                    ('allergicTo', 'eggs', 2),
-                    ('allergicTo', 'eggs', 255),
-                    ('allergicTo', 'peanuts', 0),
-                    ('allergicTo', 'peanuts', 2),
-                    ('allergicTo', 'peanuts', 7),
-                    ('allergicTo', 'peanuts', 5),
-                    ('allergicTo', 'peanuts', 255),
-                    ('allergicTo', 'shellfish', 0),
-                    ('allergicTo', 'shellfish', 4),
-                    ('allergicTo', 'shellfish', 14),
-                    ('allergicTo', 'shellfish', 10),
-                    ('allergicTo', 'shellfish', 255),
-                    ('allergicTo', 'strawberries', 0),
-                    ('allergicTo', 'strawberries', 8),
-                    ('allergicTo', 'strawberries', 28),
-                    ('allergicTo', 'strawberries', 20),
-                    ('allergicTo', 'strawberries', 255),
-                    ('allergicTo', 'tomatoes', 0),
-                    ('allergicTo', 'tomatoes', 16),
-                    ('allergicTo', 'tomatoes', 56),
-                    ('allergicTo', 'tomatoes', 40),
-                    ('allergicTo', 'tomatoes', 255),
-                    ('allergicTo', 'chocolate', 0),
-                    ('allergicTo', 'chocolate', 32),
-                    ('allergicTo', 'chocolate', 112),
-                    ('allergicTo', 'chocolate', 80),
-                    ('allergicTo', 'chocolate', 255),
-                    ('allergicTo', 'pollen', 0),
-                    ('allergicTo', 'pollen', 64),
-                    ('allergicTo', 'pollen', 224),
-                    ('allergicTo', 'pollen', 160),
-                    ('allergicTo', 'pollen', 255),
-                    ('allergicTo', 'cats', 0),
-                    ('allergicTo', 'cats', 128),
-                    ('allergicTo', 'cats', 192),
-                    ('allergicTo', 'cats', 64),
-                    ('allergicTo', 'cats', 255),
-                    ('list', '', 0),
-                    ('list', '', 1),
-                    ('list', '', 2),
-                    ('list', '', 8),
-                    ('list', '', 3),
-                    ('list', '', 5),
-                    ('list', '', 248),
-                    ('list', '', 255),
-                    ('list', '', 509),
-                    ('list', '', 257);
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
+        con.execute(query)
+        with open(data_path / "data.csv", "r") as file:
+            con.executemany(
+                "INSERT INTO allergies (task, item, score) VALUES(?, ?, ?)",
+                (row[:3] for row in csv.reader(file))
+            )
         query_1 = dedent("""\
             CREATE TABLE codes (item TEXT, code INT);
             INSERT INTO codes
@@ -521,8 +449,9 @@ def allergies():
             WITH
                 codes(item, code) AS (
                     VALUES
-                        ('eggs', 1), ('peanuts', 2), ('shellfish', 4), ('strawberries', 8),
-                        ('tomatoes', 16), ('chocolate', 32), ('pollen', 64), ('cats', 128)
+                        ('eggs', 1), ('peanuts', 2), ('shellfish', 4),
+                        ('strawberries', 8), ('tomatoes', 16),
+                        ('chocolate', 32), ('pollen', 64), ('cats', 128)
                 ),
                 results(score, result) AS (
                     SELECT score, group_concat(codes.item, ', ')
@@ -594,27 +523,17 @@ def resistor_color_duo():
             CREATE TABLE color_code (color1 TEXT, color2 TEXT, result INT);
             INSERT INTO color_code (color1, color2)
                 VALUES
-                    ('brown', 'black'),
-                    ('blue', 'grey'),
-                    ('yellow', 'violet'),
-                    ('white', 'red'),
-                    ('orange', 'orange'),
-                    ('black', 'brown');
+                    ('brown', 'black'), ('blue', 'grey'), ('yellow', 'violet'),
+                    ('white', 'red'), ('orange', 'orange'), ('black', 'brown');
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
         con.executescript(query)
         query = dedent("""\
             WITH coding(color, code) AS (
                 VALUES
-                    ('black',  0),
-                    ('brown',  1),
-                    ('red',    2),
-                    ('orange', 3),
-                    ('yellow', 4),
-                    ('green',  5),
-                    ('blue',   6),
-                    ('violet', 7),
-                    ('grey',   8),
+                    ('black',  0), ('brown',  1), ('red',    2),
+                    ('orange', 3), ('yellow', 4), ('green',  5),
+                    ('blue',   6), ('violet', 7), ('grey',   8),
                     ('white',  9)              
             )
             UPDATE color_code
@@ -704,24 +623,8 @@ def raindrops():
             CREATE TABLE raindrops (number INT, sound TEXT);
             INSERT INTO raindrops (number)
                 VALUES
-                    (1),
-                    (3),
-                    (5),
-                    (7),
-                    (6),
-                    (8),
-                    (9),
-                    (10),
-                    (14),
-                    (15),
-                    (21),
-                    (25),
-                    (27),
-                    (35),
-                    (49),
-                    (52),
-                    (105),
-                    (3125);
+                    (1), (3), (5), (7), (6), (8), (9), (10), (14), (15),
+                    (21), (25), (27), (35), (49), (52), (105), (3125);
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
         con.executescript(query)
@@ -759,15 +662,8 @@ def leap():
             CREATE TABLE leap (year INT, is_leap BOOL);
             INSERT INTO leap (year)
                 VALUES
-                    (2015),
-                    (1970),
-                    (1996),
-                    (1960),
-                    (2100),
-                    (1900),
-                    (2000),
-                    (2400),
-                    (1800);
+                    (2015), (1970), (1996), (1960), (2100),
+                    (1900), (2000), (2400), (1800);
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
         con.executescript(query)
@@ -800,14 +696,10 @@ def grains():
             CREATE TABLE grains (task TEXT, square INT, result INT);
             INSERT INTO grains (task, square)
                 VALUES
-                    ('single-square', 1),
-                    ('single-square', 2),
-                    ('single-square', 3),
-                    ('single-square', 4),
-                    ('single-square', 16),
-                    ('single-square', 32),
-                    ('single-square', 64),
-                    ('total', 0);
+                    ('single-square', 1), ('single-square', 2),
+                    ('single-square', 3), ('single-square', 4),
+                    ('single-square', 16), ('single-square', 32),
+                    ('single-square', 64), ('total', 0);
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
         con.executescript(query)
@@ -858,11 +750,8 @@ def gigasecond():
             CREATE TABLE gigasecond (moment TEXT, result TEXT);
             INSERT INTO gigasecond (moment)
                 VALUES
-                    ('2011-04-25'),
-                    ('1977-06-13'),
-                    ('1959-07-19'),
-                    ('2015-01-24T22:00:00'),
-                    ('2015-01-24T23:59:59');
+                    ('2011-04-25'), ('1977-06-13'), ('1959-07-19'),
+                    ('2015-01-24T22:00:00'), ('2015-01-24T23:59:59');
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
         con.executescript(query)
@@ -894,14 +783,10 @@ def difference_of_squares():
                 (number INT, property TEXT, result INT);
             INSERT INTO "difference-of-squares" (number, property)
                 VALUES
-                    (1, 'squareOfSum'),
-                    (5, 'squareOfSum'),
-                    (100, 'squareOfSum'),
-                    (1, 'sumOfSquares'),
-                    (5, 'sumOfSquares'),
-                    (100, 'sumOfSquares'),
-                    (1, 'differenceOfSquares'),
-                    (5, 'differenceOfSquares'),
+                    (1, 'squareOfSum'), (5, 'squareOfSum'),
+                    (100, 'squareOfSum'), (1, 'sumOfSquares'),
+                    (5, 'sumOfSquares'), (100, 'sumOfSquares'),
+                    (1, 'differenceOfSquares'), (5, 'differenceOfSquares'),
                     (100, 'differenceOfSquares');
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
@@ -941,19 +826,9 @@ def darts():
             CREATE TABLE darts (x REAL, y REAL, score INT);
             INSERT INTO darts (x, y)
                 VALUES
-                    (-9, 9),
-                    (0, 10),
-                    (-5, 0),
-                    (0, -1),
-                    (0, 0),
-                    (-0.1, -0.1),
-                    (0.7, 0.7),
-                    (0.8, -0.8),
-                    (-3.5, 3.5),
-                    (-3.6, -3.6),
-                    (-7.0, 7.0),
-                    (7.1, -7.1),
-                    (0.5, -4);
+                    (-9, 9), (0, 10), (-5, 0), (0, -1), (0, 0), (-0.1, -0.1),
+                    (0.7, 0.7), (0.8, -0.8), (-3.5, 3.5), (-3.6, -3.6),
+                    (-7.0, 7.0), (7.1, -7.1), (0.5, -4);
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
         con.executescript(query)
