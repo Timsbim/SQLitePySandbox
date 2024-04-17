@@ -33,6 +33,41 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
+def test_over_partition():
+    with sqlite.connect(":memory:") as con:
+        stmt = dedent("""\
+            CREATE TABLE test (id INT, part INT, value INT);
+            INSERT INTO test
+                VALUES (1, 1, 2), (2, 1, 1), (3, 2, 3), (4, 2, 1), (5, 2, 2);
+            """)
+        Path("part1.sql").write_text(stmt)
+        con.executescript(stmt)
+        #pprint(con.execute("SELECT * FROM test;").fetchall())
+        stmt = dedent("""\
+            SELECT id,
+                   part,
+                   row_number() OVER(PARTITION BY part ORDER BY value),
+                   row_number() OVER(PARTITION BY part),
+                   value
+            FROM test;
+            """)
+        Path("part2.sql").write_text(stmt)
+        print("\n".join(map(repr, con.execute(stmt).fetchall())))
+        stmt = dedent("""\
+            SELECT id,
+                   part,
+                   row_number() OVER(PARTITION BY part),
+                   row_number() OVER(PARTITION BY part ORDER BY value),
+                   value
+            FROM test;
+            """)
+        Path("part3.sql").write_text(stmt)
+        #print("\n".join(map(repr, con.execute(stmt).fetchall())))
+
+
+test_over_partition()
+
+
 def high_scores():
     """Exercism SQLite path exercise 18, High Scores:
     https://exercism.org/tracks/sqlite/exercises/high-scores"""
@@ -104,7 +139,7 @@ def high_scores():
         pprint(res.fetchall())
 
 
-high_scores()
+#high_scores()
 
 
 def luhn():
