@@ -74,10 +74,25 @@ def high_scores():
                 END
             FROM part_1
             WHERE results.game_id = part_1.game_id;
-            """)
+            """)        
         #print_query(query, filepath=sql_path / "solution.sql")       
         con.execute(query)
-        query = "SELECT * FROM results;"
+        query = dedent("""\
+            WITH selection(game_id) AS (
+                SELECT DISTINCT game_id FROM results
+                WHERE property IN ('personalTopThree')
+            ),
+            part_2(game_id, row, score) AS (
+                SELECT game_id,
+                       row_number() OVER(PARTITION BY game_id ORDER BY score DESC),
+                       score
+                FROM scores
+                WHERE game_id IN selection
+            )
+            SELECT * FROM part_2;
+            """)
+        #con.execute(query)        
+        #query = "SELECT * FROM results;"
         res = con.execute(query)
         pprint(res.fetchall())
 
