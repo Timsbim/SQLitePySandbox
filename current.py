@@ -33,6 +33,49 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
+def yacht():
+    """Exercism SQLite path exercise 21, Yacht:
+    https://exercism.org/tracks/sqlite/exercises/yacht"""
+ 
+    data_path = DATA_PATH / "Yacht"
+    sql_path = SQL_PATH / "Yacht"
+    sql_path.mkdir(parents=True, exist_ok=True)
+   
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE yacht (dice_results TEXT, category TEXT, result INT);
+            """)
+        #print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
+        with open(data_path / "data.csv", "r") as file:
+            con.executemany(
+                "INSERT INTO yacht(dice_results, category) VALUES(?, ?);",
+                (row[:2] for row in csv.reader(file))
+            )
+        query = dedent("""\
+            WITH rolls(results, pos, roll) AS (
+                SELECT dice_results, 4, CAST(substr(dice_results, 1, 1) AS INTEGER)
+                FROM (SELECT DISTINCT dice_results FROM yacht)
+                UNION ALL
+                SELECT results, pos + 3, CAST(substr(results, pos, 1) AS INTEGER)
+                FROM rolls
+                WHERE pos <= 13
+            )
+            SELECT results, roll FROM rolls ORDER BY results;
+            --SET result =
+            --FROM
+            """)        
+        #print_query(query, filepath=sql_path / "solution.sql")       
+        #con.execute(query)
+        #con.execute(query)
+        #query = "SELECT * FROM results;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+
+
+yacht()
+
+
 def high_scores():
     """Exercism SQLite path exercise 18, High Scores:
     https://exercism.org/tracks/sqlite/exercises/high-scores"""
