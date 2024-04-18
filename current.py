@@ -413,6 +413,7 @@ def eliuds_eggs():
             INSERT INTO "eliuds-eggs" (number)
                 VALUES (0), (16), (89), (2000000000);
             """)
+        print_query(query, filepath=sql_path / "build_table.sql")
         con.executescript(query)
         query = dedent("""\
             WITH counts(number, n, eggs) AS (
