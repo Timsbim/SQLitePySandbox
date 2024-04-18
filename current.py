@@ -33,41 +33,6 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
-def test_over_partition():
-    with sqlite.connect(":memory:") as con:
-        stmt = dedent("""\
-            CREATE TABLE test (id INT, part INT, value INT);
-            INSERT INTO test
-                VALUES (1, 1, 2), (2, 1, 1), (3, 2, 3), (4, 2, 1), (5, 2, 2);
-            """)
-        Path("part1.sql").write_text(stmt)
-        con.executescript(stmt)
-        #pprint(con.execute("SELECT * FROM test;").fetchall())
-        stmt = dedent("""\
-            SELECT id,
-                   part,
-                   row_number() OVER(PARTITION BY part ORDER BY value),
-                   row_number() OVER(PARTITION BY part),
-                   value
-            FROM test;
-            """)
-        Path("part2.sql").write_text(stmt)
-        print("\n".join(map(repr, con.execute(stmt).fetchall())))
-        stmt = dedent("""\
-            SELECT id,
-                   part,
-                   row_number() OVER(PARTITION BY part),
-                   row_number() OVER(PARTITION BY part ORDER BY value),
-                   value
-            FROM test;
-            """)
-        Path("part3.sql").write_text(stmt)
-        #print("\n".join(map(repr, con.execute(stmt).fetchall())))
-
-
-test_over_partition()
-
-
 def high_scores():
     """Exercism SQLite path exercise 18, High Scores:
     https://exercism.org/tracks/sqlite/exercises/high-scores"""
@@ -189,21 +154,20 @@ def luhn():
                 SELECT value, replace(value, ' ', '') FROM luhn
                 WHERE NOT value GLOB '*[^0-9 ]*'
             ),
-            sums(value, clean, pos, switch, digit, sum) AS (
+            sums(value, clean, pos, switch, d, sum) AS (
                 SELECT value, '0' || clean, length(clean) + 1, 1, 0, 0 FROM clean
                 WHERE length(clean) > 1
                 UNION ALL
-                SELECT
-                    value, clean, pos - 1, switch * -1,
-                    CAST(substr(clean, pos, 1) AS INTEGER),
-                    sum + iif(switch > 0, iif(digit < 5, 2 * digit, 2 * digit - 9), digit)
+                SELECT value, clean, pos - 1, switch * -1,
+                       CAST(substr(clean, pos, 1) AS INTEGER),
+                       sum + iif(switch > 0, iif(d < 5, 2 * d, 2 * d - 9), d)
                 FROM sums
                 WHERE pos > 0
             )
             UPDATE luhn
             SET result = sums.sum % 10 = 0
             FROM sums
-            WHERE (luhn.value, pos) = (sums.value, 0);
+            WHERE luhn.value = sums.value;
             """)
         print_query(query_2, filepath=sql_path / "solution_2.sql")
         con.executescript(query_2)
@@ -282,14 +246,13 @@ def collatz():
             WITH RECURSIVE steps(number, n, step) AS (
                 SELECT number, number, 0 FROM collatz
                 UNION ALL
-                SELECT number, CASE WHEN n % 2 THEN 3 * n + 1 ELSE n / 2 END, step + 1
-                FROM steps
+                SELECT number, iif(n % 2, 3 * n + 1, n / 2), step + 1 FROM steps
                 WHERE n != 1
             )
             UPDATE collatz
             SET steps = steps.step
             FROM steps 
-            WHERE (collatz.number, 1) = (steps.number, n);
+            WHERE collatz.number = steps.number;
             """)
         print_query(query, filepath=sql_path / "solution.sql")        
         con.execute(query)
@@ -435,6 +398,40 @@ def nucleotide_count():
  
  
 #nucleotide_count()
+
+
+def eliuds_eggs():
+    """Exercism SQLite path exercise 13, Eliuds Eggs:
+    https://exercism.org/tracks/sqlite/exercises/eliuds-eggs"""
+ 
+    sql_path = SQL_PATH / "Eliuds-Eggs"
+    sql_path.mkdir(parents=True, exist_ok=True)
+   
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE "eliuds-eggs" (number INT, result INT);
+            INSERT INTO "eliuds-eggs" (number)
+                VALUES (0), (16), (89), (2000000000);
+            """)
+        con.executescript(query)
+        query = dedent("""\
+            WITH counts(number, n, eggs) AS (
+                SELECT number, number >> 1, number & 1 FROM "eliuds-eggs"
+                UNION ALL
+                SELECT number, n >> 1, eggs + (n & 1) FROM counts WHERE n > 0
+            )
+            UPDATE "eliuds-eggs"
+            SET result = eggs
+            FROM counts WHERE "eliuds-eggs".number = counts.number;
+            """)
+        print_query(query, filepath=sql_path / "solution.sql")
+        con.execute(query)
+        query = """SELECT * FROM "eliuds-eggs";"""
+        res = con.execute(query)
+        pprint(res.fetchall())
+ 
+ 
+#eliuds_eggs()
 
 
 def allergies():
