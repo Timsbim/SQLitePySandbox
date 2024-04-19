@@ -66,15 +66,16 @@ def yacht():
             )
             UPDATE yacht
             SET result = CASE category
+                    WHEN 'ones' THEN iif(groups.roll = 1, groups.score, 0)
                     WHEN 'yacht' THEN iif(groups.num = 5, groups.score, 0)
                 END
             FROM groups
             WHERE yacht.dice_results = groups.res;
             """)
         #print_query(query, filepath=sql_path / "solution.sql")       
-        #con.execute(query)
+        con.execute(query)
         query = "SELECT * FROM yacht;"
-        res = con.executescript(query)
+        res = con.execute(query)
         pprint(res.fetchall())
 
 
