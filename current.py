@@ -53,28 +53,40 @@ def yacht():
                 (row[:2] for row in csv.reader(file))
             )
         query = dedent("""\
-            WITH rolls(res, pos, roll) AS (
-                SELECT res, 4, CAST(substr(res, 1, 1) AS INTEGER)
-                FROM (SELECT DISTINCT dice_results AS res FROM yacht)
+            WITH rolls(res, cat, pos, roll) AS (
+                SELECT dice_results,
+                       category,
+                       4,
+                       CAST(substr(dice_results, 1, 1) AS INTEGER)
+                FROM yacht
                 UNION ALL
-                SELECT res, pos + 3, CAST(substr(res, pos, 1) AS INTEGER)
+                SELECT res, cat, pos + 3, CAST(substr(res, pos, 1) AS INTEGER)
                 FROM rolls
                 WHERE pos <= 13
             ),
-            groups(res, roll, num, score) AS (
-                SELECT res, roll, count(roll), sum(roll) FROM rolls GROUP BY res, roll
+            groups(res, cat, roll, num, score) AS (
+                SELECT res, cat, roll, count(roll), sum(roll)
+                FROM rolls
+                GROUP BY res, cat, roll
             )
-            UPDATE yacht
-            SET result = CASE category
-                    WHEN 'ones' THEN iif(groups.roll = 1, groups.score, 0)
-                    WHEN 'yacht' THEN iif(groups.num = 5, groups.score, 0)
-                END
+            SELECT replace(res, ', ', ''),
+                   cat,
+                   sum(score)
             FROM groups
-            WHERE yacht.dice_results = groups.res;
+            WHERE (cat = 'ones' AND roll = 1)
+                  OR (cat = 'twos' AND roll = 2)
+                  OR (cat = 'threes' AND roll = 3)
+                  OR (cat = 'fours' AND roll = 4)
+                  OR (cat = 'fives' AND roll = 5)
+                  OR (cat = 'sixes' AND roll = 6)
+                  OR (cat = 'four of a kind' AND num = 4)
+                  OR (cat = 'choice')
+                  OR (cat = 'yacht' AND num = 5)
+            GROUP BY res, cat;
             """)
         #print_query(query, filepath=sql_path / "solution.sql")       
-        con.execute(query)
-        query = "SELECT * FROM yacht;"
+        #con.execute(query)
+        #query = "SELECT * FROM yacht;"
         res = con.execute(query)
         pprint(res.fetchall())
 
