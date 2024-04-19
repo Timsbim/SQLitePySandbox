@@ -53,23 +53,28 @@ def yacht():
                 (row[:2] for row in csv.reader(file))
             )
         query = dedent("""\
-            WITH rolls(results, pos, roll) AS (
-                SELECT dice_results, 4, CAST(substr(dice_results, 1, 1) AS INTEGER)
-                FROM (SELECT DISTINCT dice_results FROM yacht)
+            WITH rolls(res, pos, roll) AS (
+                SELECT res, 4, CAST(substr(res, 1, 1) AS INTEGER)
+                FROM (SELECT DISTINCT dice_results AS res FROM yacht)
                 UNION ALL
-                SELECT results, pos + 3, CAST(substr(results, pos, 1) AS INTEGER)
+                SELECT res, pos + 3, CAST(substr(res, pos, 1) AS INTEGER)
                 FROM rolls
                 WHERE pos <= 13
+            ),
+            groups(res, roll, num, score) AS (
+                SELECT res, roll, count(roll), sum(roll) FROM rolls GROUP BY res, roll
             )
-            SELECT results, roll FROM rolls ORDER BY results;
-            --SET result =
-            --FROM
-            """)        
+            UPDATE yacht
+            SET result = CASE category
+                    WHEN 'yacht' THEN iif(groups.num = 5, groups.score, 0)
+                END
+            FROM groups
+            WHERE yacht.dice_results = groups.res;
+            """)
         #print_query(query, filepath=sql_path / "solution.sql")       
         #con.execute(query)
-        #con.execute(query)
-        #query = "SELECT * FROM results;"
-        res = con.execute(query)
+        query = "SELECT * FROM yacht;"
+        res = con.executescript(query)
         pprint(res.fetchall())
 
 
