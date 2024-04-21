@@ -127,7 +127,7 @@ def high_scores():
                 "INSERT INTO results(game_id, property) VALUES(?, ?);",
                 (row[:2] for row in csv.reader(file))
             )
-        query_1 = dedent("""\
+        query = dedent("""\
             CREATE TABLE base (game_id TEXT, property TEXT, score INT);
             INSERT INTO base
                 SELECT game_id, property, score FROM scores RIGHT JOIN results USING (game_id);
@@ -157,8 +157,8 @@ def high_scores():
             WHERE (results.game_id, results.property) = (parts.game_id, parts.property);
             DROP TABLE base;
             """)
-        print_query(query_1, filepath=sql_path / "solution_1.sql")
-        query_2 = dedent("""\
+        print_query(query, filepath=sql_path / "solution_1.sql")
+        query = dedent("""\
             WITH part_1(game_id, property, result) AS (
                 SELECT game_id, property, iif(property = 'scores', group_concat(score), max(score))
                 FROM scores RIGHT JOIN results USING (game_id)
@@ -187,7 +187,7 @@ def high_scores():
             FROM parts
             WHERE (results.game_id, results.property) = (parts.game_id, parts.property);
             """)
-        print_query(query_2, filepath=sql_path / "solution_2.sql")
+        print_query(query, filepath=sql_path / "solution_2.sql")
         con.executescript(query_2)
         query = "SELECT * FROM results;"
         res = con.execute(query)
