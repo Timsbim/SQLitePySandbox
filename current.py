@@ -42,12 +42,13 @@ def yacht():
     sql_path.mkdir(parents=True, exist_ok=True)
    
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        data_path = data_path / "data.csv"
+        query = dedent(f"""\
             CREATE TABLE yacht (dice_results TEXT, category TEXT, result INT);
             """)
         print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        with open(data_path / "data.csv", "r") as file:
+        con.execute(query)
+        with open(data_path, "r") as file:
             con.executemany(
                 "INSERT INTO yacht(dice_results, category) VALUES(?, ?);",
                 (row[:2] for row in csv.reader(file))
