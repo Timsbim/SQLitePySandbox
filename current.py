@@ -137,19 +137,21 @@ def high_scores():
                 FROM base WHERE property = 'personalTopThree'
             ),
             res(game_id, property, result) AS (
-                SELECT game_id, property, iif(property = 'scores', group_concat(score), max(score))
-                FROM base WHERE property IN ('scores', 'personalBest')
-                GROUP BY game_id, property
+                SELECT game_id, property,
+                       CASE property
+                            WHEN 'scores' THEN group_concat(score)
+                            WHEN 'personalBest' THEN max(score)
+                            ELSE score
+                        END
+                FROM base WHERE property IN ('scores', 'personalBest', 'latest')
+                GROUP BY game_id HAVING ROWID = max(ROWID)
                 UNION
                 SELECT game_id, 'personalTopThree', group_concat(score) FILTER (WHERE n <= 3)
                 FROM scores_ns
                 GROUP BY game_id
-                UNION
-                SELECT game_id, property, score FROM base WHERE property = 'latest'
-                GROUP BY game_id HAVING ROWID = max(ROWID)
             )
             UPDATE results
-            SET result = parts.result
+            SET result = res.result
             FROM res
             WHERE (results.game_id, results.property) = (res.game_id, res.property);
             DROP TABLE base;
@@ -162,18 +164,19 @@ def high_scores():
                 WHERE game_id in (SELECT DISTINCT game_id FROM results WHERE property = 'personalTopThree')
             ),
             res(game_id, property, result) AS (
-                SELECT game_id, property, iif(property = 'scores', group_concat(score), max(score))
+                SELECT game_id, property,
+                       CASE property
+                            WHEN 'scores' THEN group_concat(score)
+                            WHEN 'personalBest' THEN max(score)
+                            ELSE score
+                        END
                 FROM scores RIGHT JOIN results USING (game_id)
-                WHERE property IN ('scores', 'personalBest')
-                GROUP BY game_id, property
+                WHERE property IN ('scores', 'personalBest', 'latest')
+                GROUP BY game_id HAVING scores.ROWID = max(scores.ROWID)
                 UNION
                 SELECT game_id, 'personalTopThree', group_concat(score) FILTER (WHERE n <= 3)
                 FROM scores_ns
                 GROUP BY game_id
-                UNION
-                SELECT game_id, 'latest', score FROM scores
-                WHERE game_id in (SELECT DISTINCT game_id FROM results WHERE property = 'latest')
-                GROUP BY game_id HAVING ROWID = max(ROWID)
             )
             UPDATE results
             SET result = res.result
