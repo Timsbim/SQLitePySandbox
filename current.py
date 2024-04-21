@@ -115,7 +115,7 @@ def high_scores():
             CREATE TABLE scores (game_id TEXT, score INT);
             CREATE TABLE results (game_id TEXT, property TEXT, result TEXT);
             """)
-        #print_query(query, filepath=sql_path / "build_table.sql")
+        print_query(query, filepath=sql_path / "build_table.sql")
         con.executescript(query)
         with open(data_path / "scores.csv", "r") as file:
             con.executemany(
@@ -127,48 +127,69 @@ def high_scores():
                 "INSERT INTO results(game_id, property) VALUES(?, ?);",
                 (row[:2] for row in csv.reader(file))
             )
-        query = dedent("""\
-            WITH selection(game_id) AS (
-                SELECT DISTINCT game_id FROM results
-                WHERE property IN ('scores', 'personalBest')
+        query_1 = dedent("""\
+            CREATE TABLE base (game_id TEXT, property TEXT, score INT);
+            INSERT INTO base
+                SELECT game_id, property, score FROM scores RIGHT JOIN results USING (game_id);
+            WITH RECURSIVE part_1(game_id, property, result) AS (
+                SELECT game_id, property, iif(property = 'scores', group_concat(score), max(score))
+                FROM base WHERE property IN ('scores', 'personalBest')
+                GROUP BY game_id, property
             ),
-            part_1 (game_id, scores, personalBest) AS (
-                SELECT game_id, group_concat(score, ','), max(score) FROM scores
-                WHERE game_id IN selection
+            scores_ns(game_id, n, score) AS (
+                SELECT game_id, row_number() OVER (PARTITION BY game_id ORDER BY score DESC), score
+                FROM base WHERE property = 'personalTopThree'
+            ),
+            part_2(game_id, property, result) AS (
+                SELECT game_id, 'personalTopThree', group_concat(score) FILTER (WHERE n <= 3)
+                FROM scores_ns
                 GROUP BY game_id
+                UNION SELECT * FROM part_1
+            ),
+            parts(game_id, property, result) AS (
+                SELECT game_id, property, score FROM base WHERE property = 'latest'
+                GROUP BY game_id HAVING ROWID = max(ROWID)
+                UNION SELECT * FROM part_2
             )
             UPDATE results
-            SET result = CASE property
-                    WHEN 'scores' THEN part_1.scores ELSE personalBest
-                END
-            FROM part_1
-            WHERE results.game_id = part_1.game_id;
-            """)        
-        #print_query(query, filepath=sql_path / "solution.sql")       
-        con.execute(query)
-        query = dedent("""\
-            WITH selection(game_id) AS (
-                SELECT DISTINCT game_id FROM results
-                WHERE property = 'personalTopThree'
-            ),
-            part_2(game_id, row_1, row_2, score) AS (
-                SELECT game_id,
-                       row_number() OVER(PARTITION BY game_id ORDER BY score DESC),
-                       row_number() OVER(PARTITION BY game_id),
-                       score
-                FROM scores
-                WHERE game_id IN selection
-            )
-            SELECT * FROM part_2
-            WHERE row_1 <= 3;
-            --UPDATE results
-            --SET result = group_concat(score, ',')
-            --FROM part_2
-            --WHERE results.game_id = part_2.game_id
-            --      AND row_1 <= 3;
+            SET result = parts.result
+            FROM parts
+            WHERE (results.game_id, results.property) = (parts.game_id, parts.property);
+            DROP TABLE base;
             """)
-        #con.execute(query)
-        #query = "SELECT * FROM results;"
+        print_query(query_1, filepath=sql_path / "solution_1.sql")
+        query_2 = dedent("""\
+            WITH part_1(game_id, property, result) AS (
+                SELECT game_id, property, iif(property = 'scores', group_concat(score), max(score))
+                FROM scores RIGHT JOIN results USING (game_id)
+                WHERE property IN ('scores', 'personalBest')
+                GROUP BY game_id, property
+            ),
+            scores_ns(game_id, n, score) AS (
+                SELECT game_id, row_number() OVER (PARTITION BY game_id ORDER BY score DESC), score
+                FROM scores
+                WHERE game_id in (SELECT DISTINCT game_id FROM results WHERE property = 'personalTopThree')
+            ),
+            part_2(game_id, property, result) AS (
+                SELECT game_id, 'personalTopThree', group_concat(score) FILTER (WHERE n <= 3)
+                FROM scores_ns
+                GROUP BY game_id
+                UNION SELECT * FROM part_1
+            ),
+            parts(game_id, property, result) AS (
+                SELECT game_id, 'latest', score FROM scores
+                WHERE game_id in (SELECT DISTINCT game_id FROM results WHERE property = 'latest')
+                GROUP BY game_id HAVING ROWID = max(ROWID)
+                UNION SELECT * FROM part_2
+            )
+            UPDATE results
+            SET result = parts.result
+            FROM parts
+            WHERE (results.game_id, results.property) = (parts.game_id, parts.property);
+            """)
+        print_query(query_2, filepath=sql_path / "solution_2.sql")
+        con.executescript(query_2)
+        query = "SELECT * FROM results;"
         res = con.execute(query)
         pprint(res.fetchall())
 
