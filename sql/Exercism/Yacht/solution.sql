@@ -17,7 +17,8 @@ results(res, cat, val) AS (
             WHEN 'fours' THEN ifnull(sum(score) FILTER (WHERE roll = 4), 0)
             WHEN 'fives' THEN ifnull(sum(score) FILTER (WHERE roll = 5), 0)
             WHEN 'sixes' THEN ifnull(sum(score) FILTER (WHERE roll = 6), 0)
-            WHEN 'full house' THEN iif(group_concat(num, '') IN ('23', '32'), sum(score), 0)
+            WHEN 'full house' THEN
+                iif(group_concat(num, '') IN ('23', '32'), sum(score), 0)
             WHEN 'four of a kind' THEN CASE num
                     WHEN 5 THEN score - roll
                     ELSE ifnull(sum(score) FILTER (WHERE num = 4), 0)
