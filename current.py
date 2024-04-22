@@ -76,13 +76,13 @@ def meetup():
                        WHEN 'last' THEN
                            date(format('%i-%.2i-%.2i', year, month, 1), '1 months', '-1 days')
                        ELSE format('%i-%.2i-%.2i', year, month, week_no * 7 + 1)
-                   END
+                   END start
             FROM meetup
                  LEFT JOIN daysofweek USING(dayofweek)
                  LEFT JOIN weeks USING(week)
             ;
             """)
-        #print_query(query, filepath=sql_path / "solution.sql")
+        print_query(query, filepath=sql_path / "solution.sql")
         #con.execute(query)
         #query = "SELECT * FROM meetup;"
         res = con.execute(query)
