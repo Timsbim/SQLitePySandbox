@@ -33,6 +33,47 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
+def meetup():
+    """Exercism SQLite path exercise 14, Meetup:
+    https://exercism.org/tracks/sqlite/exercises/meetup"""
+    data_path = DATA_PATH / "Meetup"
+    sql_path = SQL_PATH / "Meetup"
+    sql_path.mkdir(parents=True, exist_ok=True)
+  
+    with sqlite.connect(":memory:") as con:
+        query = dedent(f"""\
+            CREATE TABLE meetup (
+                year INTEGER,
+                month INTEGER,
+                week TEXT,
+                dayofweek TEXT,
+                result TEXT
+          )
+            """)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.execute(query)
+        with open(data_path / "data.csv", "r") as file:
+            con.executemany(
+                dedent("""\
+                INSERT INTO meetup(year, month, week, dayofweek)
+                    VALUES(?, ?, ?, ?);
+                """),
+                (row[:4] for row in csv.reader(file))
+            )
+        query = dedent("""\
+            UPDATE meetup
+            SET result =
+            """)
+        #print_query(query, filepath=sql_path / "solution.txt")
+        #con.execute(query)
+        query = "SELECT * FROM meetup;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+ 
+ 
+meetup()
+
+
 def yacht():
     """Exercism SQLite path exercise 21, Yacht:
     https://exercism.org/tracks/sqlite/exercises/yacht"""
@@ -519,6 +560,60 @@ def eliuds_eggs():
  
  
 #eliuds_eggs()
+
+
+def bob():
+    """Exercism SQLite path exercise 12, Bob:
+    https://exercism.org/tracks/sqlite/exercises/bob"""
+    data_path = DATA_PATH / "Bob"
+    sql_path = SQL_PATH / "Bob"
+    sql_path.mkdir(parents=True, exist_ok=True)
+  
+    with sqlite.connect(":memory:") as con:
+        data_path = data_path / "data.csv"
+        query = dedent(f"""\
+            CREATE TABLE bob (input TEXT, reply TEXT);
+            """)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.execute(query)
+        with open(data_path, "r") as file:
+            con.executemany(
+                "INSERT INTO bob(input) VALUES(?);",
+                (row[:1] for row in csv.reader(file))
+            )
+        query = dedent("""\
+            UPDATE bob
+            SET reply = CASE
+                    WHEN input REGEXP '^\s*$' THEN 'Fine. Be that way!'
+                    WHEN input REGEXP '\?\s*$' THEN
+                        iif(input GLOB '*[a-zA-Z]*' AND upper(input) = input,
+                            'Calm down, I know what I''m doing!', 'Sure.')
+                    WHEN input GLOB '*[a-zA-Z]*' AND upper(input) = input THEN
+                        'Whoa, chill out!'
+                    ELSE 'Whatever.'
+                END;
+            """)
+        print_query(query, filepath=sql_path / "solution_1.sql")
+        query = dedent("""\
+            UPDATE bob
+            SET reply = CASE
+                    WHEN length(trim(input, ' \n\t')) = 0 THEN 'Fine. Be that way!'
+                    WHEN rtrim(input, ' \n\t') GLOB '*[?]' THEN
+                        iif(input GLOB '*[a-zA-Z]*' AND upper(input) = input,
+                            'Calm down, I know what I''m doing!', 'Sure.')
+                    WHEN input GLOB '*[a-zA-Z]*' AND upper(input) = input THEN
+                        'Whoa, chill out!'
+                    ELSE 'Whatever.'
+                END;
+            """)
+        print_query(query, filepath=sql_path / "solution_2.sql")
+        con.execute(query)
+        query = "SELECT * FROM bob;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+ 
+ 
+#bob()
 
 
 def allergies():
