@@ -31,67 +31,8 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 
 
 # Exercism SQLite path exercises
-
-
-def meetup():
-    """Exercism SQLite path exercise 14, Meetup:
-    https://exercism.org/tracks/sqlite/exercises/meetup"""
-    data_path = DATA_PATH / "Meetup"
-    sql_path = SQL_PATH / "Meetup"
-    sql_path.mkdir(parents=True, exist_ok=True)
-  
-    with sqlite.connect(":memory:") as con:
-        query = dedent(f"""\
-            CREATE TABLE meetup (
-                year INTEGER,
-                month INTEGER,
-                week TEXT,
-                dayofweek TEXT,
-                result TEXT
-          )
-            """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.execute(query)
-        with open(data_path / "data.csv", "r") as file:
-            con.executemany(
-                dedent("""\
-                INSERT INTO meetup(year, month, week, dayofweek)
-                    VALUES(?, ?, ?, ?);
-                """),
-                (row[:4] for row in csv.reader(file))
-            )
-        query = dedent("""\
-            WITH daysofweek(dayofweek, day_no) AS (
-                VALUES ('Monday', 0), ('Tuesday', 1), ('Wednesday', 2),
-                       ('Thursday', 3), ('Friday', 4), ('Saturday', 5),
-                       ('Sunday', 6)
-            ),
-            weeks(week, week_no) AS (
-                VALUES ('first', 0), ('second', 1), ('third', 2), ('fourth', 3)
-            )
-            SELECT year, month, week,
-                   day_no,
-                   CASE week
-                       WHEN 'teenth' THEN format('%i-%.2i-%.2i', year, month, 10)
-                       WHEN 'last' THEN
-                           date(format('%i-%.2i-%.2i', year, month, 1), '1 months', '-1 days')
-                       ELSE format('%i-%.2i-%.2i', year, month, week_no * 7 + 1)
-                   END start
-            FROM meetup
-                 LEFT JOIN daysofweek USING(dayofweek)
-                 LEFT JOIN weeks USING(week)
-            ;
-            """)
-        print_query(query, filepath=sql_path / "solution.sql")
-        #con.execute(query)
-        #query = "SELECT * FROM meetup;"
-        res = con.execute(query)
-        pprint(res.fetchall())
  
  
-meetup()
-
-
 def yacht():
     """Exercism SQLite path exercise 21, Yacht:
     https://exercism.org/tracks/sqlite/exercises/yacht"""
@@ -160,96 +101,6 @@ def yacht():
 
 
 #yacht()
-
-
-def high_scores():
-    """Exercism SQLite path exercise 18, High Scores:
-    https://exercism.org/tracks/sqlite/exercises/high-scores"""
- 
-    data_path = DATA_PATH / "High-Scores"
-    sql_path = SQL_PATH / "High-Scores"
-    sql_path.mkdir(parents=True, exist_ok=True)
-   
-    with sqlite.connect(":memory:") as con:
-        query = dedent("""\
-            CREATE TABLE scores (game_id TEXT, score INT);
-            CREATE TABLE results (game_id TEXT, property TEXT, result TEXT);
-            """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        with open(data_path / "scores.csv", "r") as file:
-            con.executemany(
-                "INSERT INTO scores VALUES(?, ?);",
-                ((ID, int(score)) for ID, score in csv.reader(file))
-            )
-        with open(data_path / "results.csv", "r") as file:
-            con.executemany(
-                "INSERT INTO results(game_id, property) VALUES(?, ?);",
-                (row[:2] for row in csv.reader(file))
-            )
-        query = dedent("""\
-            CREATE TABLE base (game_id TEXT, property TEXT, score INT);
-            INSERT INTO base
-                SELECT game_id, property, score FROM scores RIGHT JOIN results USING (game_id);
-            WITH scores_ns(game_id, n, score) AS (
-                SELECT game_id, row_number() OVER (PARTITION BY game_id ORDER BY score DESC), score
-                FROM base WHERE property = 'personalTopThree'
-            ),
-            res(game_id, property, result) AS (
-                SELECT game_id, property,
-                       CASE property
-                            WHEN 'scores' THEN group_concat(score)
-                            WHEN 'personalBest' THEN max(score)
-                            ELSE score
-                        END
-                FROM base WHERE property IN ('scores', 'personalBest', 'latest')
-                GROUP BY game_id HAVING ROWID = max(ROWID)
-                UNION
-                SELECT game_id, 'personalTopThree', group_concat(score) FILTER (WHERE n <= 3)
-                FROM scores_ns
-                GROUP BY game_id
-            )
-            UPDATE results
-            SET result = res.result
-            FROM res
-            WHERE (results.game_id, results.property) = (res.game_id, res.property);
-            DROP TABLE base;
-            """)
-        print_query(query, filepath=sql_path / "solution_1.sql")
-        query = dedent("""\
-            WITH scores_ns(game_id, n, score) AS (
-                SELECT game_id, row_number() OVER (PARTITION BY game_id ORDER BY score DESC), score
-                FROM scores
-                WHERE game_id in (SELECT DISTINCT game_id FROM results WHERE property = 'personalTopThree')
-            ),
-            res(game_id, property, result) AS (
-                SELECT game_id, property,
-                       CASE property
-                            WHEN 'scores' THEN group_concat(score)
-                            WHEN 'personalBest' THEN max(score)
-                            ELSE score
-                        END
-                FROM scores RIGHT JOIN results USING (game_id)
-                WHERE property IN ('scores', 'personalBest', 'latest')
-                GROUP BY game_id HAVING scores.ROWID = max(scores.ROWID)
-                UNION
-                SELECT game_id, 'personalTopThree', group_concat(score) FILTER (WHERE n <= 3)
-                FROM scores_ns
-                GROUP BY game_id
-            )
-            UPDATE results
-            SET result = res.result
-            FROM res
-            WHERE (results.game_id, results.property) = (res.game_id, res.property);
-            """)
-        print_query(query, filepath=sql_path / "solution_2.sql")
-        con.executescript(query)
-        query = "SELECT * FROM results;"
-        res = con.execute(query)
-        pprint(res.fetchall())
-
-
-#high_scores()
 
 
 def luhn():
@@ -370,6 +221,96 @@ def isogram():
 
 
 #isogram()
+
+
+def high_scores():
+    """Exercism SQLite path exercise 18, High Scores:
+    https://exercism.org/tracks/sqlite/exercises/high-scores"""
+ 
+    data_path = DATA_PATH / "High-Scores"
+    sql_path = SQL_PATH / "High-Scores"
+    sql_path.mkdir(parents=True, exist_ok=True)
+   
+    with sqlite.connect(":memory:") as con:
+        query = dedent("""\
+            CREATE TABLE scores (game_id TEXT, score INT);
+            CREATE TABLE results (game_id TEXT, property TEXT, result TEXT);
+            """)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.executescript(query)
+        with open(data_path / "scores.csv", "r") as file:
+            con.executemany(
+                "INSERT INTO scores VALUES(?, ?);",
+                ((ID, int(score)) for ID, score in csv.reader(file))
+            )
+        with open(data_path / "results.csv", "r") as file:
+            con.executemany(
+                "INSERT INTO results(game_id, property) VALUES(?, ?);",
+                (row[:2] for row in csv.reader(file))
+            )
+        query = dedent("""\
+            CREATE TABLE base (game_id TEXT, property TEXT, score INT);
+            INSERT INTO base
+                SELECT game_id, property, score FROM scores RIGHT JOIN results USING (game_id);
+            WITH scores_ns(game_id, n, score) AS (
+                SELECT game_id, row_number() OVER (PARTITION BY game_id ORDER BY score DESC), score
+                FROM base WHERE property = 'personalTopThree'
+            ),
+            res(game_id, property, result) AS (
+                SELECT game_id, property,
+                       CASE property
+                            WHEN 'scores' THEN group_concat(score)
+                            WHEN 'personalBest' THEN max(score)
+                            ELSE score
+                        END
+                FROM base WHERE property IN ('scores', 'personalBest', 'latest')
+                GROUP BY game_id HAVING ROWID = max(ROWID)
+                UNION
+                SELECT game_id, 'personalTopThree', group_concat(score) FILTER (WHERE n <= 3)
+                FROM scores_ns
+                GROUP BY game_id
+            )
+            UPDATE results
+            SET result = res.result
+            FROM res
+            WHERE (results.game_id, results.property) = (res.game_id, res.property);
+            DROP TABLE base;
+            """)
+        print_query(query, filepath=sql_path / "solution_1.sql")
+        query = dedent("""\
+            WITH scores_ns(game_id, n, score) AS (
+                SELECT game_id, row_number() OVER (PARTITION BY game_id ORDER BY score DESC), score
+                FROM scores
+                WHERE game_id in (SELECT DISTINCT game_id FROM results WHERE property = 'personalTopThree')
+            ),
+            res(game_id, property, result) AS (
+                SELECT game_id, property,
+                       CASE property
+                            WHEN 'scores' THEN group_concat(score)
+                            WHEN 'personalBest' THEN max(score)
+                            ELSE score
+                        END
+                FROM scores RIGHT JOIN results USING (game_id)
+                WHERE property IN ('scores', 'personalBest', 'latest')
+                GROUP BY game_id HAVING scores.ROWID = max(scores.ROWID)
+                UNION
+                SELECT game_id, 'personalTopThree', group_concat(score) FILTER (WHERE n <= 3)
+                FROM scores_ns
+                GROUP BY game_id
+            )
+            UPDATE results
+            SET result = res.result
+            FROM res
+            WHERE (results.game_id, results.property) = (res.game_id, res.property);
+            """)
+        print_query(query, filepath=sql_path / "solution_2.sql")
+        con.executescript(query)
+        query = "SELECT * FROM results;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+
+
+#high_scores()
 
 
 def collatz():
@@ -543,6 +484,80 @@ def nucleotide_count():
  
  
 #nucleotide_count()
+
+
+def meetup():
+    """Exercism SQLite path exercise 14, Meetup:
+    https://exercism.org/tracks/sqlite/exercises/meetup"""
+    data_path = DATA_PATH / "Meetup"
+    sql_path = SQL_PATH / "Meetup"
+    sql_path.mkdir(parents=True, exist_ok=True)
+ 
+    with sqlite.connect(":memory:") as con:
+        query = dedent(f"""\
+            CREATE TABLE meetup (
+                year INTEGER,
+                month INTEGER,
+                week TEXT,
+                dayofweek TEXT,
+                result TEXT
+            )
+            """)
+        print_query(query, filepath=sql_path / "build_table.sql")
+        con.execute(query)
+        with open(data_path / "data.csv", "r") as file:
+            con.executemany(
+                dedent("""\
+                INSERT INTO meetup(year, month, week, dayofweek)
+                    VALUES(?, ?, ?, ?);
+                """),
+                (row[:4] for row in csv.reader(file))
+            )
+        query = dedent("""\
+            WITH daysofweek(dayofweek, day_no) AS (
+                VALUES ('Sunday', 0), ('Monday', 1), ('Tuesday', 2), ('Wednesday', 3),
+                       ('Thursday', 4), ('Friday', 5), ('Saturday', 6)
+            ),
+            weeks(week, week_no) AS (
+                VALUES ('first', 0), ('second', 1), ('third', 2), ('fourth', 3)
+            ),
+            dates_1(year, month, week, doyofweek, dow, start) AS (
+                SELECT year, month, week, dayofweek, day_no,
+                       CASE week
+                           WHEN 'teenth' THEN format('%i-%.2i-%.2i', year, month, 13)
+                           WHEN 'last' THEN date(
+                                    format('%i-%.2i-%.2i', year, month, 1),
+                                    '1 months', '-1 days'
+                                )
+                           ELSE format('%i-%.2i-%.2i', year, month, week_no * 7 + 1)
+                       END
+                FROM meetup LEFT JOIN weeks USING(week)
+                            LEFT JOIN daysofweek USING(dayofweek)
+            ),
+            dates(year, month, week, dayofweek, dow, start, sdow) AS (
+                SELECT *, CAST(strftime('%w', start) AS INT) FROM dates_1
+            )
+            UPDATE meetup
+            SET result = date(
+                    start,
+                    format(
+                        '%i days',
+                        iif(sdow <= dow, dow - sdow, 7 - sdow + dow)
+                            - iif(meetup.week = 'last' AND sdow != dow, 7, 0)
+                    )
+                )
+            FROM dates
+            WHERE (meetup.year, meetup.month, meetup.week, meetup.dayofweek)
+                  = (dates.year, dates.month, dates.week, dates.dayofweek);
+            """)
+        print_query(query, filepath=sql_path / "solution.sql")
+        con.execute(query)
+        query = "SELECT * FROM meetup;"
+        res = con.execute(query)
+        pprint(res.fetchall())
+ 
+
+#meetup()
 
 
 def eliuds_eggs():
