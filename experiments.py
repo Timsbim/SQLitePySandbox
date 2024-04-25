@@ -11,15 +11,15 @@ print(f"\nSQLite version: {sqlite.sqlite_version}", end="\n\n")
 # Helper functions
 
 
-def print_query(query, filepath=None):
-    """Print the query/ies formatted, and write to file if filename
+def print_stmt(stmt, filepath=None):
+    """Print the stmt/ies formatted, and write to file if filename
     provided"""
-    if isinstance(query, list):
-        query = "\n\n".join(query)
+    if isinstance(stmt, list):
+        stmt = "\n\n".join(stmt)
     if filepath is not None:
-        filepath.write_text(query)
-    query = indent(query, "\t")
-    print(f"Executing:\n\n{query}")
+        filepath.write_text(stmt)
+    stmt = indent(stmt, "\t")
+    print(f"Executing:\n\n{stmt}")
 
 
 # Constants

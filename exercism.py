@@ -11,15 +11,15 @@ print(f"\nSQLite version: {sqlite.sqlite_version}", end="\n\n")
 # Helper functions
 
 
-def print_query(query, filepath=None):
-    """Print the query/ies formatted, and write to file if filename
+def print_stmt(stmt, filepath=None):
+    """Print the stmt/ies formatted, and write to file if filename
     provided"""
-    if isinstance(query, list):
-        query = "\n\n".join(query)
+    if isinstance(stmt, list):
+        stmt = "\n\n".join(stmt)
     if filepath is not None:
-        filepath.write_text(query)
-    query = indent(query, "\t")
-    print(f"Executing:\n\n{query}")
+        filepath.write_text(stmt)
+    stmt = indent(stmt, "\t")
+    print(f"Executing:\n\n{stmt}")
 
 
 # Constants
@@ -43,17 +43,17 @@ def yacht():
    
     with sqlite.connect(":memory:") as con:
         data_path = data_path / "data.csv"
-        query = dedent(f"""\
+        stmt = dedent(f"""\
             CREATE TABLE yacht (dice_results TEXT, category TEXT, result INT);
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
         with open(data_path, "r") as file:
             con.executemany(
                 "INSERT INTO yacht(dice_results, category) VALUES(?, ?);",
                 (row[:2] for row in csv.reader(file))
             )
-        query = dedent("""\
+        stmt = dedent("""\
             WITH rolls(res, cat, p, roll) AS (
                 SELECT dice_results, category, 4, CAST(substr(dice_results, 1, 1) AS INT) FROM yacht
                 UNION ALL
@@ -93,10 +93,10 @@ def yacht():
             FROM results
             WHERE (yacht.dice_results, yacht.category) = (results.res, results.cat);
             """)
-        print_query(query, filepath=sql_path / "solution.sql")       
-        con.execute(query)
-        query = "SELECT * FROM yacht;"
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")       
+        con.execute(stmt)
+        stmt = "SELECT * FROM yacht;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
@@ -112,15 +112,15 @@ def luhn():
     sql_path.mkdir(parents=True, exist_ok=True)
    
     with sqlite.connect(":memory:") as con:
-        query = """CREATE TABLE luhn (value TEXT, result Boolean);""";
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.execute(query)
+        stmt = """CREATE TABLE luhn (value TEXT, result Boolean);""";
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
         with open(data_path / "data.csv", "r") as file:
             con.executemany(
                 "INSERT INTO luhn (value) VALUES (?)",
                 (row[:1] for row in csv.reader(file))
             )
-        query_1 = dedent("""\
+        stmt_1 = dedent("""\
             UPDATE luhn SET result = 0;
             WITH RECURSIVE
             clean(value, clean) AS (
@@ -143,8 +143,8 @@ def luhn():
             FROM sums
             WHERE (luhn.value, rest) = (sums.value, '');
             """)
-        print_query(query_1, filepath=sql_path / "solution_1.sql")
-        query_2 = dedent("""\
+        print_stmt(stmt_1, filepath=sql_path / "solution_1.sql")
+        stmt_2 = dedent("""\
             UPDATE luhn SET result = 0;
             WITH RECURSIVE clean(value, clean) AS (
                 SELECT value, replace(value, ' ', '') FROM luhn
@@ -165,10 +165,10 @@ def luhn():
             FROM sums
             WHERE luhn.value = sums.value;
             """)
-        print_query(query_2, filepath=sql_path / "solution_2.sql")
-        con.executescript(query_2)
-        query = "SELECT * FROM luhn;"
-        res = con.execute(query)
+        print_stmt(stmt_2, filepath=sql_path / "solution_2.sql")
+        con.executescript(stmt_2)
+        stmt = "SELECT * FROM luhn;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
  
  
@@ -183,7 +183,7 @@ def isogram():
     sql_path.mkdir(parents=True, exist_ok=True)
    
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE isogram (phrase TEXT, is_isogram INT);
             INSERT INTO isogram (phrase)
                 VALUES
@@ -193,9 +193,9 @@ def isogram():
                     ('six-year-old'), ('Emily Jung Schwartzkopf'),
                     ('accentor'), ('angola'), ('up-to-date');
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        stmt = dedent("""\
             WITH RECURSIVE letters(phrase, low, pos, letter) AS (
                 SELECT phrase, lower(phrase), 1, lower(substr(phrase, 1, 1)) FROM isogram
                 UNION ALL
@@ -213,10 +213,10 @@ def isogram():
             FROM checks
             WHERE isogram.phrase = checks.phrase;
             """)
-        print_query(query, filepath=sql_path / "solution.sql")
-        con.executescript(query)
-        query = "SELECT * FROM isogram;"
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.executescript(stmt)
+        stmt = "SELECT * FROM isogram;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
@@ -232,12 +232,12 @@ def high_scores():
     sql_path.mkdir(parents=True, exist_ok=True)
    
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE scores (game_id TEXT, score INT);
             CREATE TABLE results (game_id TEXT, property TEXT, result TEXT);
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
         with open(data_path / "scores.csv", "r") as file:
             con.executemany(
                 "INSERT INTO scores VALUES(?, ?);",
@@ -248,7 +248,7 @@ def high_scores():
                 "INSERT INTO results(game_id, property) VALUES(?, ?);",
                 (row[:2] for row in csv.reader(file))
             )
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE base (game_id TEXT, property TEXT, score INT);
             INSERT INTO base
                 SELECT game_id, property, score FROM scores RIGHT JOIN results USING (game_id);
@@ -276,8 +276,8 @@ def high_scores():
             WHERE (results.game_id, results.property) = (res.game_id, res.property);
             DROP TABLE base;
             """)
-        print_query(query, filepath=sql_path / "solution_1.sql")
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "solution_1.sql")
+        stmt = dedent("""\
             WITH scores_ns(game_id, n, score) AS (
                 SELECT game_id, row_number() OVER (PARTITION BY game_id ORDER BY score DESC), score
                 FROM scores
@@ -303,10 +303,10 @@ def high_scores():
             FROM res
             WHERE (results.game_id, results.property) = (res.game_id, res.property);
             """)
-        print_query(query, filepath=sql_path / "solution_2.sql")
-        con.executescript(query)
-        query = "SELECT * FROM results;"
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution_2.sql")
+        con.executescript(stmt)
+        stmt = "SELECT * FROM results;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
@@ -321,14 +321,14 @@ def collatz():
     sql_path.mkdir(parents=True, exist_ok=True)
     
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE collatz (number INTEGER, steps INTEGER);
             INSERT INTO collatz (number)
                 VALUES (1), (16), (12), (1000000);
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        stmt = dedent("""\
             WITH RECURSIVE steps(number, n, step) AS (
                 SELECT number, number, 0 FROM collatz
                 UNION ALL
@@ -340,10 +340,10 @@ def collatz():
             FROM steps 
             WHERE collatz.number = steps.number;
             """)
-        print_query(query, filepath=sql_path / "solution.sql")        
-        con.execute(query)
-        query = "SELECT * FROM collatz;"
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")        
+        con.execute(stmt)
+        stmt = "SELECT * FROM collatz;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
@@ -358,16 +358,16 @@ def armstrong_numbers():
     sql_path.mkdir(parents=True, exist_ok=True)
    
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE "armstrong-numbers" (number INT, result BOOLEAN);
             INSERT INTO "armstrong-numbers"(number)
                VALUES
                     (0), (5), (10), (153), (100), (9474), (9475),
                     (9926315), (9926314);
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        stmt = dedent("""\
             WITH RECURSIVE sums(number, string, e, pos, sum) AS (
                 SELECT number,
                        CAST(number AS TEXT),
@@ -385,10 +385,10 @@ def armstrong_numbers():
             FROM sums
             WHERE "armstrong-numbers".number = sums.number AND pos = e + 1;
             """)
-        print_query(query, filepath=sql_path / "solution.sql")
-        con.execute(query)
-        query = """SELECT * FROM "armstrong-numbers";"""
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+        stmt = """SELECT * FROM "armstrong-numbers";"""
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
@@ -404,20 +404,20 @@ def nucleotide_count():
     sql_path.mkdir(parents=True, exist_ok=True)
    
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE "nucleotide-count" (
                 strand TEXT CHECK (NOT "strand" GLOB '*[^ACGT]*'),
                 result TEXT
             );
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
         with open(data_path / "data.csv", "r") as file:
             con.executemany(
                 """INSERT INTO "nucleotide-count" (strand) VALUES (?);""",
                 (row[:1] for row in csv.reader(file))
             )
-        query_1 = dedent("""\
+        stmt_1 = dedent("""\
             WITH RECURSIVE counts(strand, pos, n) AS (
                 SELECT strand, 1, json('{"A":0,"C":0,"G":0,"T":0}') FROM "nucleotide-count"
                 UNION ALL
@@ -439,8 +439,8 @@ def nucleotide_count():
             WHERE "nucleotide-count".strand = counts.strand
                   AND pos = length(counts.strand) + 1;
             """)
-        print_query(query_1, filepath=sql_path / "solution_1.sql")       
-        query_2 = dedent("""\
+        print_stmt(stmt_1, filepath=sql_path / "solution_1.sql")       
+        stmt_2 = dedent("""\
             WITH RECURSIVE counts(strand, pos, n, jstr) AS (
                 SELECT strand, 2,
                        format('$.%s', substr(strand, 1, 1)),
@@ -459,8 +459,8 @@ def nucleotide_count():
             WHERE "nucleotide-count".strand = counts.strand
                   AND pos = length(counts.strand) + 2;
             """)
-        print_query(query_2, filepath=sql_path / "solution_2.sql")
-        query_3 = dedent("""\
+        print_stmt(stmt_2, filepath=sql_path / "solution_2.sql")
+        stmt_3 = dedent("""\
             WITH RECURSIVE counts(strand, pos, n, A, C, G, T) AS (
                 SELECT strand, 2, substr(strand, 1, 1), 0, 0, 0, 0 FROM "nucleotide-count"
                 UNION ALL
@@ -476,10 +476,10 @@ def nucleotide_count():
             WHERE "nucleotide-count".strand = counts.strand
                   AND pos = length(counts.strand) + 2;
             """)
-        print_query(query_3, filepath=sql_path / "solution_3.sql")
-        con.execute(query_3)
-        query = """SELECT * FROM "nucleotide-count";"""
-        res = con.execute(query)
+        print_stmt(stmt_3, filepath=sql_path / "solution_3.sql")
+        con.execute(stmt_3)
+        stmt = """SELECT * FROM "nucleotide-count";"""
+        res = con.execute(stmt)
         pprint(res.fetchall())
  
  
@@ -494,7 +494,7 @@ def meetup():
     sql_path.mkdir(parents=True, exist_ok=True)
  
     with sqlite.connect(":memory:") as con:
-        query = dedent(f"""\
+        stmt = dedent(f"""\
             CREATE TABLE meetup (
                 year INTEGER,
                 month INTEGER,
@@ -503,8 +503,8 @@ def meetup():
                 result TEXT
             )
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
         with open(data_path / "data.csv", "r") as file:
             con.executemany(
                 dedent("""\
@@ -513,7 +513,7 @@ def meetup():
                 """),
                 (row[:4] for row in csv.reader(file))
             )
-        query = dedent("""\
+        stmt = dedent("""\
             WITH daysofweek(dayofweek, day_no) AS (
                 VALUES ('Sunday', 0), ('Monday', 1), ('Tuesday', 2), ('Wednesday', 3),
                        ('Thursday', 4), ('Friday', 5), ('Saturday', 6)
@@ -550,10 +550,10 @@ def meetup():
             WHERE (meetup.year, meetup.month, meetup.week, meetup.dayofweek)
                   = (dates.year, dates.month, dates.week, dates.dayofweek);
             """)
-        print_query(query, filepath=sql_path / "solution.sql")
-        con.execute(query)
-        query = "SELECT * FROM meetup;"
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+        stmt = "SELECT * FROM meetup;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
  
 
@@ -568,14 +568,14 @@ def eliuds_eggs():
     sql_path.mkdir(parents=True, exist_ok=True)
    
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE "eliuds-eggs" (number INT, result INT);
             INSERT INTO "eliuds-eggs" (number)
                 VALUES (0), (16), (89), (2000000000);
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        stmt = dedent("""\
             WITH counts(number, n, eggs) AS (
                 SELECT number, number >> 1, number & 1 FROM "eliuds-eggs"
                 UNION ALL
@@ -585,10 +585,10 @@ def eliuds_eggs():
             SET result = eggs
             FROM counts WHERE "eliuds-eggs".number = counts.number;
             """)
-        print_query(query, filepath=sql_path / "solution.sql")
-        con.execute(query)
-        query = """SELECT * FROM "eliuds-eggs";"""
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+        stmt = """SELECT * FROM "eliuds-eggs";"""
+        res = con.execute(stmt)
         pprint(res.fetchall())
  
  
@@ -604,17 +604,17 @@ def bob():
   
     with sqlite.connect(":memory:") as con:
         data_path = data_path / "data.csv"
-        query = dedent(f"""\
+        stmt = dedent(f"""\
             CREATE TABLE bob (input TEXT, reply TEXT);
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
         with open(data_path, "r") as file:
             con.executemany(
                 "INSERT INTO bob(input) VALUES(?);",
                 (row[:1] for row in csv.reader(file))
             )
-        query = dedent("""\
+        stmt = dedent("""\
             UPDATE bob
             SET reply = CASE
                     WHEN input REGEXP '^\s*$' THEN 'Fine. Be that way!'
@@ -626,8 +626,8 @@ def bob():
                     ELSE 'Whatever.'
                 END;
             """)
-        print_query(query, filepath=sql_path / "solution_1.sql")
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "solution_1.sql")
+        stmt = dedent("""\
             UPDATE bob
             SET reply = CASE
                     WHEN length(trim(input, ' \n\t')) = 0 THEN 'Fine. Be that way!'
@@ -639,10 +639,10 @@ def bob():
                     ELSE 'Whatever.'
                 END;
             """)
-        print_query(query, filepath=sql_path / "solution_2.sql")
-        con.execute(query)
-        query = "SELECT * FROM bob;"
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution_2.sql")
+        con.execute(stmt)
+        stmt = "SELECT * FROM bob;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
  
  
@@ -658,7 +658,7 @@ def allergies():
     sql_path.mkdir(parents=True, exist_ok=True)
     
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE allergies (
                 task TEXT,
                 item TEXT,
@@ -666,14 +666,14 @@ def allergies():
                 result TEXT
             );
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
         with open(data_path / "data.csv", "r") as file:
             con.executemany(
                 "INSERT INTO allergies (task, item, score) VALUES(?, ?, ?)",
                 (row[:3] for row in csv.reader(file))
             )
-        query_1 = dedent("""\
+        stmt_1 = dedent("""\
             CREATE TABLE codes (item TEXT, code INT);
             INSERT INTO codes
                 VALUES
@@ -692,8 +692,8 @@ def allergies():
                 )
             WHERE task = 'list';
             """)
-        print_query(query_1, filepath=sql_path / "solution_1.sql") 
-        query_2 = dedent("""\
+        print_stmt(stmt_1, filepath=sql_path / "solution_1.sql") 
+        stmt_2 = dedent("""\
             WITH codes(item, code) AS (
                 VALUES
                     ('eggs', 1), ('peanuts', 2), ('shellfish', 4), ('strawberries', 8),
@@ -713,8 +713,8 @@ def allergies():
             FROM codes c
             WHERE (task, allergies.item) = ('allergicTo', c.item) OR task = 'list';
             """)
-        print_query(query_2, filepath=sql_path / "solution_2.sql")   
-        query_3 = dedent("""\
+        print_stmt(stmt_2, filepath=sql_path / "solution_2.sql")   
+        stmt_3 = dedent("""\
             WITH
                 codes(item, code) AS (
                     VALUES
@@ -740,10 +740,10 @@ def allergies():
                 (task, allergies.item) = ('allergicTo', c.item)
                 OR (task, allergies.score) = ('list', r.score);
             """)
-        print_query(query_3, filepath=sql_path / "solution_3.sql")   
-        con.executescript(query_3)
-        query = "SELECT * FROM allergies;"
-        res = con.execute(query)
+        print_stmt(stmt_3, filepath=sql_path / "solution_3.sql")   
+        con.executescript(stmt_3)
+        stmt = "SELECT * FROM allergies;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
@@ -758,22 +758,22 @@ def two_fer():
     sql_path.mkdir(parents=True, exist_ok=True)
     
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE twofer (input TEXT, response TEXT);
             INSERT INTO twofer (input)
                 VALUES (''), ('Alice'), ('Bob');
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        stmt = dedent("""\
             UPDATE twofer
             SET response =
                 'One for ' || coalesce(nullif(input, ''), 'you') || ', one for me.';
             """)
-        print_query(query, filepath=sql_path / "solution.sql")        
-        con.execute(query)
-        query = "SELECT * FROM twofer;"
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")        
+        con.execute(stmt)
+        stmt = "SELECT * FROM twofer;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
@@ -788,16 +788,16 @@ def resistor_color_duo():
     sql_path.mkdir(parents=True, exist_ok=True)
     
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE color_code (color1 TEXT, color2 TEXT, result INT);
             INSERT INTO color_code (color1, color2)
                 VALUES
                     ('brown', 'black'), ('blue', 'grey'), ('yellow', 'violet'),
                     ('white', 'red'), ('orange', 'orange'), ('black', 'brown');
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        stmt = dedent("""\
             WITH coding(color, code) AS (
                 VALUES
                     ('black',  0), ('brown',  1), ('red',    2),
@@ -810,10 +810,10 @@ def resistor_color_duo():
             FROM coding c1, coding c2
             WHERE (color1, color2) = (c1.color, c2.color);
             """)
-        print_query(query, filepath=sql_path / "solution.sql")        
-        con.execute(query)
-        query = "SELECT * FROM color_code;"
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")        
+        con.execute(stmt)
+        stmt = "SELECT * FROM color_code;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
@@ -828,14 +828,14 @@ def resistor_color():
     sql_path.mkdir(parents=True, exist_ok=True)
     
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE color_code (color TEXT, result INT);
             INSERT INTO color_code (color)
                 VALUES ('black'), ('white'), ('orange');
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        stmt = dedent("""\
             UPDATE color_code
             SET result = CASE color
                     WHEN 'black'  THEN 0
@@ -850,8 +850,8 @@ def resistor_color():
                     WHEN 'white'  THEN 9
                 END;
             """)
-        print_query(query, filepath=sql_path / "solution_1.sql")
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "solution_1.sql")
+        stmt = dedent("""\
             WITH coding(color, code) AS (
                 VALUES
                     ('black',  0),
@@ -870,10 +870,10 @@ def resistor_color():
             FROM coding
             WHERE color_code.color = coding.color;
             """)
-        print_query(query, filepath=sql_path / "solution_2.sql")        
-        con.execute(query)
-        query = "SELECT * FROM color_code;"
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution_2.sql")        
+        con.execute(stmt)
+        stmt = "SELECT * FROM color_code;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
@@ -888,16 +888,16 @@ def raindrops():
     sql_path.mkdir(parents=True, exist_ok=True)
     
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE raindrops (number INT, sound TEXT);
             INSERT INTO raindrops (number)
                 VALUES
                     (1), (3), (5), (7), (6), (8), (9), (10), (14), (15),
                     (21), (25), (27), (35), (49), (52), (105), (3125);
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        stmt = dedent("""\
             UPDATE raindrops
             SET sound = coalesce(
                     nullif(
@@ -909,10 +909,10 @@ def raindrops():
                     number
                 );
             """)
-        print_query(query, filepath=sql_path / "solution.sql")
-        con.execute(query)
-        query = "SELECT * FROM raindrops;"
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+        stmt = "SELECT * FROM raindrops;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
@@ -927,26 +927,26 @@ def leap():
     sql_path.mkdir(parents=True, exist_ok=True)
     
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE leap (year INT, is_leap BOOL);
             INSERT INTO leap (year)
                 VALUES
                     (2015), (1970), (1996), (1960), (2100),
                     (1900), (2000), (2400), (1800);
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        stmt = dedent("""\
             UPDATE leap
             SET is_leap = CASE
                     WHEN year % 100 = 0 THEN year % 400 = 0
                     ELSE year % 4 = 0
                 END;
             """)
-        print_query(query, filepath=sql_path / "solution.sql")
-        con.execute(query)
-        query = "SELECT * FROM leap;"
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+        stmt = "SELECT * FROM leap;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
@@ -961,7 +961,7 @@ def grains():
     sql_path.mkdir(parents=True, exist_ok=True)
     
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE grains (task TEXT, square INT, result INT);
             INSERT INTO grains (task, square)
                 VALUES
@@ -970,9 +970,9 @@ def grains():
                     ('single-square', 16), ('single-square', 32),
                     ('single-square', 64), ('total', 0);
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        stmt = dedent("""\
             WITH RECURSIVE counts(square, grains) AS (
                 SELECT 1, 1
                 UNION ALL
@@ -989,18 +989,18 @@ def grains():
                 (grains.task = 'single-square' AND grains.square = counts.square)
                 OR (grains.task = 'total' AND counts.square = 65);
             """)
-        print_query(query, filepath=sql_path / "solution_with_rec.sql")
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "solution_with_rec.sql")
+        stmt = dedent("""\
             UPDATE grains
             SET result = CASE task
                     WHEN 'single-square' THEN power(2, square - 1)
                     ELSE power(2, 64) - 1
                 END;
             """)
-        print_query(query, filepath=sql_path / "solution.sql")
-        con.execute(query)
-        query = "SELECT * FROM grains;"
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+        stmt = "SELECT * FROM grains;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
@@ -1015,24 +1015,24 @@ def gigasecond():
     sql_path.mkdir(parents=True, exist_ok=True)
     
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE gigasecond (moment TEXT, result TEXT);
             INSERT INTO gigasecond (moment)
                 VALUES
                     ('2011-04-25'), ('1977-06-13'), ('1959-07-19'),
                     ('2015-01-24T22:00:00'), ('2015-01-24T23:59:59');
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        stmt = dedent("""\
             UPDATE gigasecond
             SET result = strftime('%Y-%m-%dT%H:%M:%S', moment, '1000000000 seconds');
             --SET result = strftime('%FT%T', moment, '1000000000 seconds');
             """)
-        print_query(query, filepath=sql_path / "solution.sql")
-        con.execute(query)
-        query = "SELECT * FROM gigasecond;"
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+        stmt = "SELECT * FROM gigasecond;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
@@ -1047,7 +1047,7 @@ def difference_of_squares():
     sql_path.mkdir(parents=True, exist_ok=True)
     
     with sqlite.connect(":memory:") as con:
-        query = dedent("""\
+        stmt = dedent("""\
             CREATE TABLE "difference-of-squares"
                 (number INT, property TEXT, result INT);
             INSERT INTO "difference-of-squares" (number, property)
@@ -1058,9 +1058,9 @@ def difference_of_squares():
                     (1, 'differenceOfSquares'), (5, 'differenceOfSquares'),
                     (100, 'differenceOfSquares');
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        stmt = dedent("""\
             UPDATE "difference-of-squares"
             SET result =
                 CASE
@@ -1073,10 +1073,10 @@ def difference_of_squares():
                         - number * (number + 1) * (2 * number + 1) / 6
                 END;
             """)
-        print_query(query, filepath=sql_path / "solution.sql")
-        con.execute(query)
-        query = '''SELECT * FROM "difference-of-squares";'''
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+        stmt = '''SELECT * FROM "difference-of-squares";'''
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
@@ -1091,7 +1091,7 @@ def darts():
     sql_path.mkdir(parents=True, exist_ok=True)
     
     with sqlite.connect(":memory:") as con:
-        query = dedent("""
+        stmt = dedent("""
             CREATE TABLE darts (x REAL, y REAL, score INT);
             INSERT INTO darts (x, y)
                 VALUES
@@ -1099,9 +1099,9 @@ def darts():
                     (0.7, 0.7), (0.8, -0.8), (-3.5, 3.5), (-3.6, -3.6),
                     (-7.0, 7.0), (7.1, -7.1), (0.5, -4);
             """)
-        print_query(query, filepath=sql_path / "build_table.sql")
-        con.executescript(query)
-        query = dedent("""\
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        stmt = dedent("""\
             UPDATE darts
             SET score = CASE
                             WHEN dist > 100 THEN 0
@@ -1112,10 +1112,10 @@ def darts():
             FROM (SELECT x, y, (x * x + y * y) AS dist FROM darts) as dists
             WHERE darts.x = dists.x AND darts.y = dists.y;
             """)
-        print_query(query, filepath=sql_path / "solution.sql")
-        con.execute(query)
-        query = "SELECT * FROM darts;"
-        res = con.execute(query)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+        stmt = "SELECT * FROM darts;"
+        res = con.execute(stmt)
         pprint(res.fetchall())
 
 
