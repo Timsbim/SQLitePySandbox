@@ -33,6 +33,36 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
+def pascals_triangle():
+    """Exercism SQLite path exercise 23, Pascal's Triangle:
+    https://exercism.org/tracks/sqlite/exercises/pascals-triangle"""
+
+    exercise = "Pascals-Triangle"
+    data_path = DATA_PATH / exercise
+    sql_path = SQL_PATH / exercise
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        data_path = data_path / "data.csv"
+        stmt = dedent(f"""\
+            CREATE TABLE "pascals-triangle" (input INT, result TEXT);
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
+        with open(data_path, "r") as file:
+            con.executemany(
+                """INSERT INTO "pascals-triangle"(input, result) VALUES(?, ?);""",
+                csv.reader(file)
+            )
+
+        stmt = """SELECT * FROM "pascals-triangle";"""
+        res = con.execute(stmt)
+        pprint(res.fetchall())
+
+
+pascals_triangle()
+
+
 def rna_transcription():
     """Exercism SQLite path exercise 27, RNA-Transcription:
     https://exercism.org/tracks/sqlite/exercises/rna-transcription"""
