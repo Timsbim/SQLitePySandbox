@@ -31,8 +31,121 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 
 
 # Exercism SQLite path exercises
- 
- 
+
+
+def rna_transcription():
+    """Exercism SQLite path exercise 27, RNA-Transcription:
+    https://exercism.org/tracks/sqlite/exercises/rna-transcription"""
+
+    exercise = "RNA-Transcription"
+    data_path = DATA_PATH / exercise
+    sql_path = SQL_PATH / exercise
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        data_path = data_path / "data.csv"
+        stmt = dedent(f"""\
+            CREATE TABLE "rna-transcription" (dna TEXT, result TEXT);
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
+        with open(data_path, "r") as file:
+            con.executemany(
+                """INSERT INTO "rna-transcription"(dna, result) VALUES(?, ?);""",
+                csv.reader(file)
+            )
+
+        stmt = dedent("""\
+            UPDATE "rna-transcription"
+            SET result = replace(replace(replace(replace(replace(dna, 'A', 'U'), 'T', 'A'), 'G', 'X'), 'C', 'G'), 'X', 'C')
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution_1.sql")
+
+        stmt = dedent("""\
+            WITH RECURSIVE comps(dna, comp, pos) AS (
+                SELECT dna, "", 1 FROM "rna-transcription"
+                UNION
+                SELECT
+                    dna,
+                    comp || CASE substring(dna, pos, 1)
+                        WHEN "G" THEN "C"
+                        WHEN "C" THEN "G"
+                        WHEN "T" THEN "A"
+                        WHEN "A" THEN "U"
+                    END,
+                    pos + 1
+                FROM comps
+                WHERE pos <= length(dna) + 1
+            )
+            UPDATE "rna-transcription"
+            SET result = comp
+            FROM comps WHERE comps.dna = "rna-transcription".dna
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution_2.sql")
+        con.execute(stmt)
+        stmt = """SELECT * FROM "rna-transcription";"""
+        res = con.execute(stmt)
+        pprint(res.fetchall())
+
+
+#rna_transcription()
+
+
+def matching_brackets():
+    """Exercism SQLite path exercise 22, Matching Brackets:
+    https://exercism.org/tracks/sqlite/exercises/matching-brackets"""
+
+    exercise = "Matching-Brackets"
+    data_path = DATA_PATH / exercise
+    sql_path = SQL_PATH / exercise
+    sql_path.mkdir(parents=True, exist_ok=True)
+   
+    with sqlite.connect(":memory:") as con:
+        data_path = data_path / "data.csv"
+        stmt = dedent(f"""\
+            CREATE TABLE "matching-brackets" (input TEXT, result BOOLEAN);
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
+        with open(data_path, "r") as file:
+            con.executemany(
+                """INSERT INTO "matching-brackets"(input) VALUES(?);""",
+                (row[:1] for row in csv.reader(file))
+            )
+
+        stmt = dedent("""\
+            WITH RECURSIVE stacks(input, pos, stack) AS (
+                SELECT input, 1, "" FROM "matching-brackets"
+                UNION ALL
+                SELECT
+                    input, pos + 1,
+                    CASE substr(input, pos, 1)
+                        WHEN stack = "X" THEN stack
+                        WHEN "[" THEN "[" || stack
+                        WHEN "{" THEN "{" || stack
+                        WHEN "(" THEN "(" || stack
+                        WHEN "]" THEN iif(substr(stack, 1, 1) = "[", substr(stack, 2), "X")
+                        WHEN "}" THEN iif(substr(stack, 1, 1) = "{", substr(stack, 2), "X")
+                        WHEN ")" THEN iif(substr(stack, 1, 1) = "(", substr(stack, 2), "X")
+                        ELSE stack
+                    END
+                FROM stacks WHERE pos <= length(input)
+            )
+            UPDATE "matching-brackets"
+            SET result = s.stack = ""
+            FROM stacks AS s
+            WHERE "matching-brackets".input = s.input AND s.pos = length(s.input) + 1;
+            """)        
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+        stmt = """SELECT * FROM "matching-brackets";"""
+        res = con.execute(stmt)
+        pprint(res.fetchall())
+       
+
+#matching_brackets()
+
+
 def yacht():
     """Exercism SQLite path exercise 21, Yacht:
     https://exercism.org/tracks/sqlite/exercises/yacht"""
@@ -53,6 +166,7 @@ def yacht():
                 "INSERT INTO yacht(dice_results, category) VALUES(?, ?);",
                 (row[:2] for row in csv.reader(file))
             )
+        
         stmt = dedent("""\
             WITH rolls(res, cat, p, roll) AS (
                 SELECT dice_results, category, 4, CAST(substr(dice_results, 1, 1) AS INT) FROM yacht
@@ -120,6 +234,7 @@ def luhn():
                 "INSERT INTO luhn (value) VALUES (?)",
                 (row[:1] for row in csv.reader(file))
             )
+        
         stmt_1 = dedent("""\
             UPDATE luhn SET result = 0;
             WITH RECURSIVE
@@ -144,6 +259,7 @@ def luhn():
             WHERE (luhn.value, rest) = (sums.value, '');
             """)
         print_stmt(stmt_1, filepath=sql_path / "solution_1.sql")
+        
         stmt_2 = dedent("""\
             UPDATE luhn SET result = 0;
             WITH RECURSIVE clean(value, clean) AS (
@@ -195,6 +311,7 @@ def isogram():
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.executescript(stmt)
+        
         stmt = dedent("""\
             WITH RECURSIVE letters(phrase, low, pos, letter) AS (
                 SELECT phrase, lower(phrase), 1, lower(substr(phrase, 1, 1)) FROM isogram
@@ -248,6 +365,7 @@ def high_scores():
                 "INSERT INTO results(game_id, property) VALUES(?, ?);",
                 (row[:2] for row in csv.reader(file))
             )
+        
         stmt = dedent("""\
             CREATE TABLE base (game_id TEXT, property TEXT, score INT);
             INSERT INTO base
@@ -328,6 +446,7 @@ def collatz():
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.executescript(stmt)
+        
         stmt = dedent("""\
             WITH RECURSIVE steps(number, n, step) AS (
                 SELECT number, number, 0 FROM collatz
@@ -367,6 +486,7 @@ def armstrong_numbers():
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.executescript(stmt)
+        
         stmt = dedent("""\
             WITH RECURSIVE sums(number, string, e, pos, sum) AS (
                 SELECT number,
@@ -417,6 +537,7 @@ def nucleotide_count():
                 """INSERT INTO "nucleotide-count" (strand) VALUES (?);""",
                 (row[:1] for row in csv.reader(file))
             )
+        
         stmt_1 = dedent("""\
             WITH RECURSIVE counts(strand, pos, n) AS (
                 SELECT strand, 1, json('{"A":0,"C":0,"G":0,"T":0}') FROM "nucleotide-count"
@@ -440,6 +561,7 @@ def nucleotide_count():
                   AND pos = length(counts.strand) + 1;
             """)
         print_stmt(stmt_1, filepath=sql_path / "solution_1.sql")       
+        
         stmt_2 = dedent("""\
             WITH RECURSIVE counts(strand, pos, n, jstr) AS (
                 SELECT strand, 2,
@@ -460,6 +582,7 @@ def nucleotide_count():
                   AND pos = length(counts.strand) + 2;
             """)
         print_stmt(stmt_2, filepath=sql_path / "solution_2.sql")
+        
         stmt_3 = dedent("""\
             WITH RECURSIVE counts(strand, pos, n, A, C, G, T) AS (
                 SELECT strand, 2, substr(strand, 1, 1), 0, 0, 0, 0 FROM "nucleotide-count"
@@ -513,6 +636,7 @@ def meetup():
                 """),
                 (row[:4] for row in csv.reader(file))
             )
+        
         stmt = dedent("""\
             WITH daysofweek(dayofweek, day_no) AS (
                 VALUES ('Sunday', 0), ('Monday', 1), ('Tuesday', 2), ('Wednesday', 3),
@@ -575,6 +699,7 @@ def eliuds_eggs():
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.executescript(stmt)
+        
         stmt = dedent("""\
             WITH counts(number, n, eggs) AS (
                 SELECT number, number >> 1, number & 1 FROM "eliuds-eggs"
@@ -627,6 +752,7 @@ def bob():
                 END;
             """)
         print_stmt(stmt, filepath=sql_path / "solution_1.sql")
+        
         stmt = dedent("""\
             UPDATE bob
             SET reply = CASE
@@ -673,6 +799,7 @@ def allergies():
                 "INSERT INTO allergies (task, item, score) VALUES(?, ?, ?)",
                 (row[:3] for row in csv.reader(file))
             )
+        
         stmt_1 = dedent("""\
             CREATE TABLE codes (item TEXT, code INT);
             INSERT INTO codes
@@ -693,6 +820,7 @@ def allergies():
             WHERE task = 'list';
             """)
         print_stmt(stmt_1, filepath=sql_path / "solution_1.sql") 
+        
         stmt_2 = dedent("""\
             WITH codes(item, code) AS (
                 VALUES
@@ -714,6 +842,7 @@ def allergies():
             WHERE (task, allergies.item) = ('allergicTo', c.item) OR task = 'list';
             """)
         print_stmt(stmt_2, filepath=sql_path / "solution_2.sql")   
+        
         stmt_3 = dedent("""\
             WITH
                 codes(item, code) AS (
@@ -765,6 +894,7 @@ def two_fer():
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.executescript(stmt)
+        
         stmt = dedent("""\
             UPDATE twofer
             SET response =
@@ -797,6 +927,7 @@ def resistor_color_duo():
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.executescript(stmt)
+        
         stmt = dedent("""\
             WITH coding(color, code) AS (
                 VALUES
@@ -835,6 +966,7 @@ def resistor_color():
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.executescript(stmt)
+        
         stmt = dedent("""\
             UPDATE color_code
             SET result = CASE color
@@ -851,6 +983,7 @@ def resistor_color():
                 END;
             """)
         print_stmt(stmt, filepath=sql_path / "solution_1.sql")
+        
         stmt = dedent("""\
             WITH coding(color, code) AS (
                 VALUES
@@ -897,6 +1030,7 @@ def raindrops():
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.executescript(stmt)
+        
         stmt = dedent("""\
             UPDATE raindrops
             SET sound = coalesce(
@@ -936,6 +1070,7 @@ def leap():
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.executescript(stmt)
+        
         stmt = dedent("""\
             UPDATE leap
             SET is_leap = CASE
@@ -972,6 +1107,7 @@ def grains():
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.executescript(stmt)
+        
         stmt = dedent("""\
             WITH RECURSIVE counts(square, grains) AS (
                 SELECT 1, 1
@@ -990,6 +1126,7 @@ def grains():
                 OR (grains.task = 'total' AND counts.square = 65);
             """)
         print_stmt(stmt, filepath=sql_path / "solution_with_rec.sql")
+        
         stmt = dedent("""\
             UPDATE grains
             SET result = CASE task
@@ -1024,6 +1161,7 @@ def gigasecond():
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.executescript(stmt)
+        
         stmt = dedent("""\
             UPDATE gigasecond
             SET result = strftime('%Y-%m-%dT%H:%M:%S', moment, '1000000000 seconds');
@@ -1060,6 +1198,7 @@ def difference_of_squares():
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.executescript(stmt)
+        
         stmt = dedent("""\
             UPDATE "difference-of-squares"
             SET result =
@@ -1101,6 +1240,7 @@ def darts():
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.executescript(stmt)
+        
         stmt = dedent("""\
             UPDATE darts
             SET score = CASE
