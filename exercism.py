@@ -88,7 +88,7 @@ with sqlite.connect(":memory:") as con:
 
 
 def etl():
-    """Exercism SQLite path exercise 23, ETL:
+    """Exercism SQLite path exercise 26, ETL:
     https://exercism.org/tracks/sqlite/exercises/etl"""
 
     exercise = "ETL"
@@ -110,6 +110,24 @@ def etl():
             )
 
         stmt = """SELECT * FROM etl;"""
+        res = con.execute(stmt)
+        #pprint(res.fetchall())
+
+        stmt = dedent("""\
+            SELECT * FROM json_each('{"1":["A","E","I","O","U","L","N","R","S","T"],"2":["D","G"],"3":["B","C","M","P"],"4":["F","H","V","W","Y"],"5":["K"],"8":["J","X"],"10":["Q","Z"]}')
+            """)
+        res = con.execute(stmt)
+        pprint(res.fetchall())
+
+        stmt = dedent("""\
+            SELECT * FROM json_each('["A","E","I","O","U","L","N","R","S","T"]')
+            """)
+        res = con.execute(stmt)
+        pprint(res.fetchall())
+
+        stmt = dedent("""\
+            SELECT * FROM json_tree('{"1":["A","E","I","O","U","L","N","R","S","T"],"2":["D","G"],"3":["B","C","M","P"],"4":["F","H","V","W","Y"],"5":["K"],"8":["J","X"],"10":["Q","Z"]}')
+            """)
         res = con.execute(stmt)
         pprint(res.fetchall())
 
