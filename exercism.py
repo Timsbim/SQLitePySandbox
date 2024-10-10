@@ -32,6 +32,90 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 
 # Exercism SQLite path exercises
 
+'''
+with sqlite.connect(":memory:") as con:
+    stmt = dedent(f"""\
+        CREATE TABLE foo(a INTEGER PRIMARY KEY, b);
+        INSERT INTO foo VALUES
+            (1, 1),
+            (2, 6),
+            (3, 15),
+            (4, 20),
+            (5, 15),
+            (6, 6),
+            (7, 1);
+        """)
+    con.executescript(stmt)
+    stmt = """SELECT * FROM foo"""
+    res = con.execute(stmt)
+    pprint(res.fetchall())
+   
+    stmt = dedent("""\
+        SELECT
+            a,
+            sum(b) OVER (ORDER BY a ROWS 1 PRECEDING) AS sum
+        FROM foo
+        UNION
+        SELECT max(a) + 1, 1 FROM foo
+        """)
+    res = con.execute(stmt)
+    pprint(res.fetchall())
+ 
+    stmt = dedent("""\
+        WITH RECURSIVE bar(no, a, b) AS (
+            SELECT 1, a, b FROM foo
+            UNION
+                SELECT
+                    no + 1,
+                    a,
+                    sum(b) OVER (ORDER BY a ROWS 1 PRECEDING)
+                FROM bar
+                WHERE no < 5
+                --UNION
+                --SELECT no, max(a) + 1, 1 FROM bar WHERE no = max(no)
+        )
+        SELECT * FROM bar
+        --SELECT
+        --    a,
+        --    sum(b) OVER (ORDER BY a ROWS 1 PRECEDING) AS sum
+        --FROM foo
+        --UNION
+        --SELECT max(a) + 1, 1 FROM foo
+        """)
+    res = con.execute(stmt)
+    pprint(res.fetchall())
+'''
+
+
+def etl():
+    """Exercism SQLite path exercise 23, ETL:
+    https://exercism.org/tracks/sqlite/exercises/etl"""
+
+    exercise = "ETL"
+    data_path = DATA_PATH / exercise
+    sql_path = SQL_PATH / exercise
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        data_path = data_path / "data.csv"
+        stmt = dedent(f"""\
+            CREATE TABLE etl (input TEXT, result TEXT);
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
+        with open(data_path, "r") as file:
+            con.executemany(
+                """INSERT INTO etl(input, result) VALUES(?, ?);""",
+                csv.reader(file)
+            )
+
+        stmt = """SELECT * FROM etl;"""
+        res = con.execute(stmt)
+        pprint(res.fetchall())
+
+
+etl()
+
 
 def pascals_triangle():
     """Exercism SQLite path exercise 23, Pascal's Triangle:
@@ -60,7 +144,7 @@ def pascals_triangle():
         pprint(res.fetchall())
 
 
-pascals_triangle()
+#pascals_triangle()
 
 
 def rna_transcription():
