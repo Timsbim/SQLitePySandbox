@@ -86,6 +86,24 @@ with sqlite.connect(":memory:") as con:
     pprint(res.fetchall())
 '''
 
+with sqlite.connect(":memory:") as con:
+    stmt = dedent("""\
+        CREATE TABLE foo (input TEXT);
+        INSERT INTO foo VALUES ('["a","b"]'), ('["x","y","z"]');
+        """)
+    con.executescript(stmt)
+   
+    stmt = """SELECT * FROM foo;"""
+    res = con.execute(stmt)
+    pprint(res.fetchall())
+   
+    stmt = dedent("""\
+        SELECT foo.rowid, a.*
+        FROM foo, json_each(foo.input) AS a;
+        """)
+    res = con.execute(stmt)
+    pprint(res.fetchall())
+
 
 def etl():
     """Exercism SQLite path exercise 26, ETL:
@@ -131,8 +149,14 @@ def etl():
         res = con.execute(stmt)
         pprint(res.fetchall())
 
+        stmt = dedent("""\
+            SELECT * FROM json_each('["B","C","M","P"]')
+            """)
+        res = con.execute(stmt)
+        pprint(res.fetchall())
+ 
 
-etl()
+#etl()
 
 
 def pascals_triangle():
