@@ -86,78 +86,6 @@ with sqlite.connect(":memory:") as con:
     pprint(res.fetchall())
 '''
 
-with sqlite.connect(":memory:") as con:
-    stmt = dedent("""\
-        CREATE TABLE foo (input TEXT);
-        INSERT INTO foo VALUES ('["a","b"]'), ('["x","y","z"]');
-        """)
-    con.executescript(stmt)
-   
-    stmt = """SELECT * FROM foo;"""
-    res = con.execute(stmt)
-    pprint(res.fetchall())
-   
-    stmt = dedent("""\
-        SELECT foo.rowid, a.*
-        FROM foo, json_each(foo.input) AS a;
-        """)
-    res = con.execute(stmt)
-    pprint(res.fetchall())
-
-
-def etl():
-    """Exercism SQLite path exercise 26, ETL:
-    https://exercism.org/tracks/sqlite/exercises/etl"""
-
-    exercise = "ETL"
-    data_path = DATA_PATH / exercise
-    sql_path = SQL_PATH / exercise
-    sql_path.mkdir(parents=True, exist_ok=True)
-    
-    with sqlite.connect(":memory:") as con:
-        data_path = data_path / "data.csv"
-        stmt = dedent(f"""\
-            CREATE TABLE etl (input TEXT, result TEXT);
-            """)
-        print_stmt(stmt, filepath=sql_path / "build_table.sql")
-        con.execute(stmt)
-        with open(data_path, "r") as file:
-            con.executemany(
-                """INSERT INTO etl(input, result) VALUES(?, ?);""",
-                csv.reader(file)
-            )
-
-        stmt = """SELECT * FROM etl;"""
-        res = con.execute(stmt)
-        #pprint(res.fetchall())
-
-        stmt = dedent("""\
-            SELECT * FROM json_each('{"1":["A","E","I","O","U","L","N","R","S","T"],"2":["D","G"],"3":["B","C","M","P"],"4":["F","H","V","W","Y"],"5":["K"],"8":["J","X"],"10":["Q","Z"]}')
-            """)
-        res = con.execute(stmt)
-        pprint(res.fetchall())
-
-        stmt = dedent("""\
-            SELECT * FROM json_each('["A","E","I","O","U","L","N","R","S","T"]')
-            """)
-        res = con.execute(stmt)
-        pprint(res.fetchall())
-
-        stmt = dedent("""\
-            SELECT * FROM json_tree('{"1":["A","E","I","O","U","L","N","R","S","T"],"2":["D","G"],"3":["B","C","M","P"],"4":["F","H","V","W","Y"],"5":["K"],"8":["J","X"],"10":["Q","Z"]}')
-            """)
-        res = con.execute(stmt)
-        pprint(res.fetchall())
-
-        stmt = dedent("""\
-            SELECT * FROM json_each('["B","C","M","P"]')
-            """)
-        res = con.execute(stmt)
-        pprint(res.fetchall())
- 
-
-#etl()
-
 
 def pascals_triangle():
     """Exercism SQLite path exercise 23, Pascal's Triangle:
@@ -245,6 +173,74 @@ def rna_transcription():
 
 
 #rna_transcription()
+
+
+def etl():
+    """Exercism SQLite path exercise 26, ETL:
+    https://exercism.org/tracks/sqlite/exercises/etl"""
+
+    exercise = "ETL"
+    data_path = DATA_PATH / exercise
+    sql_path = SQL_PATH / exercise
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        data_path = data_path / "data.csv"
+        stmt = dedent(f"""\
+            CREATE TABLE etl (input TEXT, result TEXT);
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
+        with open(data_path, "r") as file:
+            con.executemany(
+                """INSERT INTO etl(input, result) VALUES(?, ?);""",
+                csv.reader(file)
+            )
+
+        stmt = dedent("""\
+            WITH lists(input, points, list) AS (
+                SELECT input, CAST(a.key AS INTEGER), a.value
+                FROM etl, json_each(etl.input) AS a
+            ),
+            chars(input, letter, points) AS (
+                SELECT input, lower(b.value), lists.points
+                FROM lists, json_each(list) as b
+                ORDER BY input, b.value
+            ),
+            results(input, result) AS (
+                SELECT input, json_group_object(letter, points)
+                FROM chars
+                GROUP BY input
+            )
+            UPDATE etl
+            SET result = results.result
+            FROM results WHERE etl.input = results.input;
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution_1.sql")
+        
+        stmt = dedent("""\
+            UPDATE etl
+            SET result = (
+                WITH lists(points, list) AS (
+                    SELECT CAST(key AS INTEGER), value
+                    FROM json_each(input)
+                ),
+                chars(letter, points) AS (
+                    SELECT lower(value), lists.points
+                    FROM lists, json_each(list)
+                    ORDER BY value
+                )
+                SELECT json_group_object(letter, points) FROM chars
+            )
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution_2.sql")        
+        con.execute(stmt)
+        stmt = """SELECT * FROM etl;"""
+        res = con.execute(stmt)
+        pprint(res.fetchall()) 
+
+
+#etl()
 
 
 def matching_brackets():
