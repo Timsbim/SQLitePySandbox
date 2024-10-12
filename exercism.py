@@ -32,18 +32,12 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 
 # Exercism SQLite path exercises
 
-'''
+
 with sqlite.connect(":memory:") as con:
     stmt = dedent(f"""\
         CREATE TABLE foo(a INTEGER PRIMARY KEY, b);
         INSERT INTO foo VALUES
-            (1, 1),
-            (2, 6),
-            (3, 15),
-            (4, 20),
-            (5, 15),
-            (6, 6),
-            (7, 1);
+            (1, 1), (2, 6), (3, 15), (4, 20), (5, 15), (6, 6), (7, 1);
         """)
     con.executescript(stmt)
     stmt = """SELECT * FROM foo"""
@@ -82,9 +76,9 @@ with sqlite.connect(":memory:") as con:
         --UNION
         --SELECT max(a) + 1, 1 FROM foo
         """)
-    res = con.execute(stmt)
-    pprint(res.fetchall())
-'''
+    #res = con.execute(stmt)
+    #pprint(res.fetchall())
+
 
 
 def pascals_triangle():
@@ -288,7 +282,32 @@ def matching_brackets():
             FROM stacks AS s
             WHERE "matching-brackets".input = s.input AND s.pos = length(s.input) + 1;
             """)        
-        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        print_stmt(stmt, filepath=sql_path / "solution_1.sql")
+
+        stmt = dedent("""\
+            UPDATE "matching-brackets"
+            SET result = (
+                WITH RECURSIVE stacks(pos, stack) AS (
+                    SELECT 1, ""
+                    UNION ALL
+                    SELECT
+                        pos + 1,
+                        CASE substr(input, pos, 1)
+                            WHEN stack = "X" THEN stack
+                            WHEN "[" THEN "[" || stack
+                            WHEN "{" THEN "{" || stack
+                            WHEN "(" THEN "(" || stack
+                            WHEN "]" THEN iif(substr(stack, 1, 1) = "[", substr(stack, 2), "X")
+                            WHEN "}" THEN iif(substr(stack, 1, 1) = "{", substr(stack, 2), "X")
+                            WHEN ")" THEN iif(substr(stack, 1, 1) = "(", substr(stack, 2), "X")
+                            ELSE stack
+                        END
+                    FROM stacks WHERE pos <= length(input)
+                )
+                SELECT stack == "" FROM stacks WHERE pos = length(input) + 1
+            )
+            """)        
+        print_stmt(stmt, filepath=sql_path / "solution_2.sql")
         con.execute(stmt)
         stmt = """SELECT * FROM "matching-brackets";"""
         res = con.execute(stmt)
