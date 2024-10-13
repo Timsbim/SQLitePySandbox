@@ -1,0 +1,5 @@
+{"users":[{"name":"Adam","owes":{},"owed_by":{},"balance":0},{"name":"Bob","owes":{},"owed_by":{},"balance":0}]};null;"/users";""
+{"users":[{"name":"Adam","owes":{},"owed_by":{},"balance":0},{"name":"Bob","owes":{},"owed_by":{},"balance":0}]};{"users":["Bob"]};"/users";""
+{"users":[{"name":"Adam","owes":{},"owed_by":{},"balance":0}]};null;"/add";""
+{"users":[{"name":"Adam","owes":{},"owed_by":{},"balance":0}]};{"user":"Bob"};"/add";""
+{"users":[{"name":"Adam","owes":{},"owed_by":{},"balance":0},{"name":"Bob","owes":{},"owed_by":{},"balance":0}]};{"lender":"Adam","borrower":"Bob","amount":3};"/iou";""

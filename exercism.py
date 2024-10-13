@@ -41,8 +41,8 @@ with sqlite.connect(":memory:") as con:
         """)
     con.executescript(stmt)
     stmt = """SELECT * FROM foo"""
-    res = con.execute(stmt)
-    pprint(res.fetchall())
+    #res = con.execute(stmt)
+    #pprint(res.fetchall())
    
     stmt = dedent("""\
         SELECT
@@ -52,8 +52,8 @@ with sqlite.connect(":memory:") as con:
         UNION
         SELECT max(a) + 1, 1 FROM foo
         """)
-    res = con.execute(stmt)
-    pprint(res.fetchall())
+    #res = con.execute(stmt)
+    #pprint(res.fetchall())
  
     stmt = dedent("""\
         WITH RECURSIVE bar(no, a, b) AS (
@@ -79,6 +79,55 @@ with sqlite.connect(":memory:") as con:
     #res = con.execute(stmt)
     #pprint(res.fetchall())
 
+
+def rest_api():
+    """Exercism SQLite path exercise 28, REST API:
+    https://exercism.org/tracks/sqlite/exercises/rest-api"""
+
+    exercise = "REST-API"
+    data_path = DATA_PATH / exercise
+    sql_path = SQL_PATH / exercise
+    sql_path.mkdir(parents=True, exist_ok=True)
+
+    with sqlite.connect(":memory:") as con:
+        data_path = data_path / "data.csv"
+        stmt = dedent(f"""\
+            CREATE TABLE "rest-api" (database TEXT, payload TEXT, url TEXT, result TEXT);
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
+        with open(data_path, "r") as file:
+            con.executemany(
+                """INSERT INTO "rest-api" VALUES(json(?), json(?), ?, ?);""",
+                csv.reader(file, delimiter=";")
+            )
+        stmt = dedent("""\
+            UPDATE "rest-api" SET payload = NULL WHERE payload = json('null')
+            """)
+        #con.execute(stmt)
+
+        stmt = dedent("""\
+            UPDATE "rest-api"
+            SET result = (
+                CASE url
+                    WHEN "/users" THEN
+                        (SELECT json_object("users", json_group_array(value))
+                         FROM json_each(database, '$.users')
+                         WHERE (value ->> '$.name') IN (SELECT value FROM json_each(payload, '$.users')))
+                    WHEN "/add" THEN
+                        json_object("name", payload ->> '$.user', "owes", json("{}"), "owed_by", json("{}"), "balance", 0)
+                    WHEN "/iou" THEN NULL
+                END
+            )
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+        stmt = """SELECT * FROM "rest-api";"""
+        res = con.execute(stmt)
+        pprint(res.fetchall())
+
+
+rest_api()
 
 
 def pascals_triangle():
