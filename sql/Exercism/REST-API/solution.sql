@@ -9,4 +9,4 @@ SET result = (
             json_object("name", payload ->> '$.user', "owes", json("{}"), "owed_by", json("{}"), "balance", 0)
         WHEN "/iou" THEN NULL
     END
-)            
+)

@@ -94,7 +94,7 @@ def rest_api():
         stmt = dedent(f"""\
             CREATE TABLE "rest-api" (database TEXT, payload TEXT, url TEXT, result TEXT);
             """)
-        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        #print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.execute(stmt)
         with open(data_path, "r") as file:
             con.executemany(
@@ -105,6 +105,11 @@ def rest_api():
             UPDATE "rest-api" SET payload = NULL WHERE payload = json('null')
             """)
         #con.execute(stmt)
+        stmt = dedent("""\
+            SELECT (payload ->> '$.amount') FROM "rest-api"
+            """)
+        res = con.execute(stmt)
+        pprint(res.fetchall())
 
         stmt = dedent("""\
             UPDATE "rest-api"
@@ -117,14 +122,15 @@ def rest_api():
                     WHEN "/add" THEN
                         json_object("name", payload ->> '$.user', "owes", json("{}"), "owed_by", json("{}"), "balance", 0)
                     WHEN "/iou" THEN NULL
+                    --(database ->> '$.' || (payload ->> '$.lender') || '') + (payload ->> '$.amount')
                 END
             )
             """)
-        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        #print_stmt(stmt, filepath=sql_path / "solution.sql")
         con.execute(stmt)
         stmt = """SELECT * FROM "rest-api";"""
         res = con.execute(stmt)
-        pprint(res.fetchall())
+        #pprint(res.fetchall())
 
 
 rest_api()
