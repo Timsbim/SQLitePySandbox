@@ -122,11 +122,10 @@ def rest_api():
                     WHEN "/add" THEN
                         json_object("name", payload ->> '$.user', "owes", json("{}"), "owed_by", json("{}"), "balance", 0)
                     WHEN "/iou" THEN NULL
-                    --(database ->> '$.' || (payload ->> '$.lender') || '') + (payload ->> '$.amount')
                 END
             )
             """)
-        #print_stmt(stmt, filepath=sql_path / "solution.sql")
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
         con.execute(stmt)
         stmt = """SELECT * FROM "rest-api";"""
         res = con.execute(stmt)
