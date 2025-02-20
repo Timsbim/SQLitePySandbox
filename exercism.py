@@ -33,53 +33,6 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
-with sqlite.connect(":memory:") as con:
-    stmt = dedent(f"""\
-        CREATE TABLE foo(a INTEGER PRIMARY KEY, b);
-        INSERT INTO foo VALUES
-            (1, 1), (2, 6), (3, 15), (4, 20), (5, 15), (6, 6), (7, 1);
-        """)
-    con.executescript(stmt)
-    stmt = """SELECT * FROM foo"""
-    #res = con.execute(stmt)
-    #pprint(res.fetchall())
-   
-    stmt = dedent("""\
-        SELECT
-            a,
-            sum(b) OVER (ORDER BY a ROWS 1 PRECEDING) AS sum
-        FROM foo
-        UNION
-        SELECT max(a) + 1, 1 FROM foo
-        """)
-    #res = con.execute(stmt)
-    #pprint(res.fetchall())
- 
-    stmt = dedent("""\
-        WITH RECURSIVE bar(no, a, b) AS (
-            SELECT 1, a, b FROM foo
-            UNION
-                SELECT
-                    no + 1,
-                    a,
-                    sum(b) OVER (ORDER BY a ROWS 1 PRECEDING)
-                FROM bar
-                WHERE no < 5
-                --UNION
-                --SELECT no, max(a) + 1, 1 FROM bar WHERE no = max(no)
-        )
-        SELECT * FROM bar
-        --SELECT
-        --    a,
-        --    sum(b) OVER (ORDER BY a ROWS 1 PRECEDING) AS sum
-        --FROM foo
-        --UNION
-        --SELECT max(a) + 1, 1 FROM foo
-        """)
-    #res = con.execute(stmt)
-    #pprint(res.fetchall())
-
-
 def rest_api():
     """Exercism SQLite path exercise 28, REST API:
     https://exercism.org/tracks/sqlite/exercises/rest-api"""
@@ -88,48 +41,56 @@ def rest_api():
     data_path = DATA_PATH / exercise
     sql_path = SQL_PATH / exercise
     sql_path.mkdir(parents=True, exist_ok=True)
-
+    
     with sqlite.connect(":memory:") as con:
-        data_path = data_path / "data.csv"
-        stmt = dedent(f"""\
-            CREATE TABLE "rest-api" (database TEXT, payload TEXT, url TEXT, result TEXT);
-            """)
-        #print_stmt(stmt, filepath=sql_path / "build_table.sql")
-        con.execute(stmt)
-        with open(data_path, "r") as file:
-            con.executemany(
-                """INSERT INTO "rest-api" VALUES(json(?), json(?), ?, ?);""",
-                csv.reader(file, delimiter=";")
-            )
-        stmt = dedent("""\
-            UPDATE "rest-api" SET payload = NULL WHERE payload = json('null')
-            """)
-        #con.execute(stmt)
-        stmt = dedent("""\
-            SELECT (payload ->> '$.amount') FROM "rest-api"
-            """)
-        res = con.execute(stmt)
-        pprint(res.fetchall())
-
-        stmt = dedent("""\
-            UPDATE "rest-api"
-            SET result = (
-                CASE url
-                    WHEN "/users" THEN
-                        (SELECT json_object("users", json_group_array(value))
-                         FROM json_each(database, '$.users')
-                         WHERE (value ->> '$.name') IN (SELECT value FROM json_each(payload, '$.users')))
-                    WHEN "/add" THEN
-                        json_object("name", payload ->> '$.user', "owes", json("{}"), "owed_by", json("{}"), "balance", 0)
-                    WHEN "/iou" THEN NULL
-                END
-            )
-            """)
-        print_stmt(stmt, filepath=sql_path / "solution.sql")
-        con.execute(stmt)
-        stmt = """SELECT * FROM "rest-api";"""
-        res = con.execute(stmt)
-        #pprint(res.fetchall())
+            data_path = data_path / "data.csv"
+            stmt = dedent(f"""\
+                CREATE TABLE "rest-api" (database TEXT, payload TEXT, url TEXT, result TEXT);
+                """)
+            #print_stmt(stmt, filepath=sql_path / "build_table.sql")
+            con.execute(stmt)
+            with open(data_path, "r") as file:
+                con.executemany(
+                    """INSERT INTO "rest-api" VALUES(json(?), json(?), ?, ?);""",
+                    csv.reader(file, delimiter=";")
+                )
+            stmt = dedent("""\
+                SELECT json_group_array(value ORDER BY (value ->> '$.name'))
+                FROM "rest-api", json_each(database, '$.users')
+                """)
+            res = con.execute(stmt)
+            pprint(res.fetchall())
+     
+            stmt = dedent("""\
+                UPDATE "rest-api"
+                SET result = (
+                    CASE url
+                        WHEN "/users" THEN
+                            CASE payload
+                                WHEN "null" THEN
+                                    (SELECT json_object("users", json_group_array(value ORDER BY (value ->> '$.name')))
+                                     FROM json_each(database, '$.users'))
+                                ELSE
+                                    (SELECT json_object("users", json_group_array(value ORDER BY (value ->> '$.name')))
+                                     FROM json_each(database, '$.users')
+                                     WHERE (value ->> '$.name') IN (SELECT value FROM json_each(payload, '$.users')))
+                            END
+                        --WHEN "/add" THEN
+                        --    json_object("name", payload ->> '$.user', "owes", json("{}"), "owed_by", json("{}"), "balance", 0)
+                        --WHEN "/iou" THEN
+                        --    (SELECT
+                        --        --payload ->> '$.lender' AS lender,
+                        --        payload ->> '$.borrower' AS borrower
+                        --        --payload ->> '$.amount' AS amount
+                        --    )
+                    END
+                )
+                """)
+            #print_stmt(stmt, filepath=sql_path / "solution.sql")
+            con.execute(stmt)
+            stmt = """SELECT * FROM "rest-api";"""
+            res = con.execute(stmt)
+            pprint(res.fetchall())
 
 
 rest_api()
