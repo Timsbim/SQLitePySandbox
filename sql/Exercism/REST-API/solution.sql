@@ -4,18 +4,27 @@ SET result = (
         WHEN '/users' THEN
             CASE payload
                 WHEN 'null' THEN (
-                    SELECT json_object("users", json_group_array(json(value)))
+                    SELECT json_object(
+                        "users",
+                        json_group_array(json(value))
+                    )
                     FROM (
                         SELECT value
                         FROM json_each(database, '$.users')
                         ORDER BY value ->> '$.name'
                     )
                 ) ELSE (
-                    SELECT json_object("users", json_group_array(json(value)))
+                    SELECT json_object(
+                        "users",
+                        json_group_array(json(value))
+                    )
                      FROM (
                         SELECT value, value ->> '$.name' AS name
                         FROM json_each(database, '$.users')
-                        WHERE name IN (SELECT value FROM json_each(payload, '$.users'))
+                        WHERE name IN (
+                            SELECT value
+                            FROM json_each(payload, '$.users')
+                        )
                         ORDER BY name
                     )
                 )
@@ -34,7 +43,9 @@ SET result = (
             FROM (
                 SELECT value, value ->> '$.name' AS name
                 FROM json_each(database, '$.users')
-                WHERE name = payload ->> '$.lender' OR name = payload ->> '$.borrower'
+                WHERE
+                    name = payload ->> '$.lender'
+                    OR name = payload ->> '$.borrower'
             )
         )
     END
