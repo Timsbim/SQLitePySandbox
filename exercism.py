@@ -67,16 +67,28 @@ def rest_api():
                     CASE url
                         WHEN "/users" THEN
                             CASE payload
-                                WHEN "null" THEN
-                                    (SELECT json_object("users", json_group_array(value ORDER BY (value ->> '$.name')))
-                                     FROM json_each(database, '$.users'))
-                                ELSE
-                                    (SELECT json_object("users", json_group_array(value ORDER BY (value ->> '$.name')))
-                                     FROM json_each(database, '$.users')
-                                     WHERE (value ->> '$.name') IN (SELECT value FROM json_each(payload, '$.users')))
+                                WHEN "null" THEN (
+                                    SELECT json_object(
+                                        "users",
+                                        json_group_array(value ORDER BY value ->> '$.name')
+                                    ) FROM json_each(database, '$.users')
+                                ) ELSE (
+                                    SELECT json_object(
+                                        "users",
+                                        json_group_array(value ORDER BY value ->> '$.name')
+                                    ) FROM json_each(database, '$.users')
+                                    WHERE value ->> '$.name' IN (
+                                        SELECT value FROM json_each(payload, '$.users')
+                                    )
+                                )
                             END
-                        --WHEN "/add" THEN
-                        --    json_object("name", payload ->> '$.user', "owes", json("{}"), "owed_by", json("{}"), "balance", 0)
+                        WHEN '/add' THEN
+                            json_object(
+                                'name', payload ->> '$.user',
+                                'owes', json('{}'),
+                                'owed_by', json('{}'),
+                                'balance', 0
+                            )
                         --WHEN "/iou" THEN
                         --    (SELECT
                         --        --payload ->> '$.lender' AS lender,
@@ -161,15 +173,33 @@ def rest_api():
                                 'balance', 0
                             )
                         WHEN '/iou' THEN (
-                            --'{"users":[]}'
-                            --coalesce(database ->> '$.users[5]', '"foo!"')
-                            SELECT json_group_array(value)
+                            --coalesce(database ->> '$.users[5]', '"foo!"')                           
+                            SELECT json_group_array(json(user))
                             FROM (
-                                SELECT value, value ->> '$.name' AS name
+                                SELECT
+                                    CASE value ->> '$.name'
+                                        WHEN "rest-api".payload ->> '$.lender' THEN
+                                            "rest-api".payload ->> '$.amount'
+                                        WHEN "rest-api".payload ->> '$.borrower' THEN
+                                            json_set(
+                                                value,
+                                                '$.amount',
+                                                coalesce(value ->> '$.amount', 0)
+                                                    + ("rest-api".payload ->> '$.amount'),
+                                                value,
+                                                '$.owed_by',
+                                                json_set(
+                                                    value ->> '$.owed_by',
+                                                    "rest-api".payload ->> '$.borrower',
+                                                    coalesce(
+                                                        value ->> ('$.owed_by.' || ("rest-api".payload -> '$.borrower')),
+                                                        0
+                                                    ) + ("rest-api".payload ->> '$.amount')
+                                                )
+                                            )
+                                    END AS user
                                 FROM json_each(database, '$.users')
-                                WHERE
-                                    name = payload ->> '$.lender'
-                                    OR name = payload ->> '$.borrower'
+                                WHERE user IS NOT NULL
                             )
                         )
                     END
@@ -674,7 +704,9 @@ def high_scores():
             WITH scores_ns(game_id, n, score) AS (
                 SELECT game_id, row_number() OVER (PARTITION BY game_id ORDER BY score DESC), score
                 FROM scores
-                WHERE game_id in (SELECT DISTINCT game_id FROM results WHERE property = 'personalTopThree')
+                WHERE game_id IN (
+                    SELECT DISTINCT game_id FROM results WHERE property = 'personalTopThree'
+                )
             ),
             res(game_id, property, result) AS (
                 SELECT game_id, property,

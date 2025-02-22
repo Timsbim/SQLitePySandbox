@@ -37,15 +37,33 @@ SET result = (
                 'balance', 0
             )
         WHEN '/iou' THEN (
-            --'{"users":[]}'
-            --coalesce(database ->> '$.users[5]', '"foo!"')
-            SELECT json_group_array(value)
+            --coalesce(database ->> '$.users[5]', '"foo!"')                           
+            SELECT json_group_array(json(user))
             FROM (
-                SELECT value, value ->> '$.name' AS name
+                SELECT
+                    CASE value ->> '$.name'
+                        WHEN "rest-api".payload ->> '$.lender' THEN
+                            "rest-api".payload ->> '$.amount'
+                        WHEN "rest-api".payload ->> '$.borrower' THEN
+                            json_set(
+                                value,
+                                '$.amount',
+                                coalesce(value ->> '$.amount', 0)
+                                    + ("rest-api".payload ->> '$.amount'),
+                                value,
+                                '$.owed_by',
+                                json_set(
+                                    value ->> '$.owed_by',
+                                    "rest-api".payload ->> '$.borrower',
+                                    coalesce(
+                                        value ->> ('$.owed_by.' || ("rest-api".payload -> '$.borrower')),
+                                        0
+                                    ) + ("rest-api".payload ->> '$.amount')
+                                )
+                            )
+                    END AS user
                 FROM json_each(database, '$.users')
-                WHERE
-                    name = payload ->> '$.lender'
-                    OR name = payload ->> '$.borrower'
+                WHERE user IS NOT NULL
             )
         )
     END
