@@ -58,81 +58,14 @@ def rest_api():
                 SELECT json_group_array(value ORDER BY (value ->> '$.name'))
                 FROM "rest-api", json_each(database, '$.users')
                 """)
+            #stmt = """SELECT * FROM "rest-api";"""
             res = con.execute(stmt)
-            pprint(res.fetchall())
-     
-            stmt = dedent("""\
-                UPDATE "rest-api"
-                SET result = (
-                    CASE url
-                        WHEN "/users" THEN
-                            CASE payload
-                                WHEN "null" THEN (
-                                    SELECT json_object(
-                                        "users",
-                                        json_group_array(value ORDER BY value ->> '$.name')
-                                    ) FROM json_each(database, '$.users')
-                                ) ELSE (
-                                    SELECT json_object(
-                                        "users",
-                                        json_group_array(value ORDER BY value ->> '$.name')
-                                    ) FROM json_each(database, '$.users')
-                                    WHERE value ->> '$.name' IN (
-                                        SELECT value FROM json_each(payload, '$.users')
-                                    )
-                                )
-                            END
-                        WHEN '/add' THEN
-                            json_object(
-                                'name', payload ->> '$.user',
-                                'owes', json('{}'),
-                                'owed_by', json('{}'),
-                                'balance', 0
-                            )
-                        --WHEN "/iou" THEN
-                        --    (SELECT
-                        --        --payload ->> '$.lender' AS lender,
-                        --        payload ->> '$.borrower' AS borrower
-                        --        --payload ->> '$.amount' AS amount
-                        --    )
-                    END
-                )
-                """)
-            print_stmt(stmt, filepath=sql_path / "solution.sql")
-            con.execute(stmt)
-            stmt = """SELECT * FROM "rest-api";"""
-            res = con.execute(stmt)
-            pprint(res.fetchall())
-
-
-def rest_api():
-    """Exercism SQLite path exercise 28, REST API:
-    https://exercism.org/tracks/sqlite/exercises/rest-api"""
-
-    exercise = "REST-API"
-    data_path = DATA_PATH / exercise
-    sql_path = SQL_PATH / exercise
-    sql_path.mkdir(parents=True, exist_ok=True)
-    
-    with sqlite.connect(":memory:") as con:
-            data_path = data_path / "data.csv"
-            stmt = dedent(f"""\
-                CREATE TABLE "rest-api" (database TEXT, payload TEXT, url TEXT, result TEXT);
-                """)
-            #print_stmt(stmt, filepath=sql_path / "build_table.sql")
-            con.execute(stmt)
-            with open(data_path, "r") as file:
-                con.executemany(
-                    """INSERT INTO "rest-api" VALUES(json(?), json(?), ?, ?);""",
-                    csv.reader(file, delimiter=";")
-                )
-            stmt = dedent("""\
-                SELECT json_group_array(value ORDER BY (value ->> '$.name'))
-                FROM "rest-api", json_each(database, '$.users')
-                """)
-            res = con.execute(stmt)
-            pprint(res.fetchall())
-     
+            pprint(list(res.fetchall()))
+            #for row in res.fetchall():
+            #    print("\n".join(row))
+        
+            #pprint(res.fetchall())
+            '''
             stmt = dedent("""\
                 UPDATE "rest-api"
                 SET result = (
@@ -210,7 +143,7 @@ def rest_api():
             stmt = """SELECT * FROM "rest-api";"""
             res = con.execute(stmt)
             pprint(res.fetchall())
-
+            '''
 
 rest_api()
 
@@ -236,7 +169,55 @@ def pascals_triangle():
                 """INSERT INTO "pascals-triangle"(input, result) VALUES(?, ?);""",
                 csv.reader(file)
             )
-
+        stmt = dedent("""\
+            WITH arrays(row, ns) AS (
+              	SELECT 1, '[1]'
+              	UNION
+              	SELECT row + 1,
+                	   (SELECT json_group_array(n)
+                        FROM (SELECT 1 n
+                              UNION ALL
+                              SELECT a.value + b.value n
+                              FROM json_each(ns) a, json_each(ns) AS b
+                              WHERE a.ROWID = b.ROWID - 1
+                              UNION ALL
+                              SELECT 1 n))
+              	FROM arrays
+              	LIMIT (SELECT max(input) FROM "pascals-triangle")
+            ),
+            rows(row, ns) AS (SELECT row, replace(trim(ns, '[]'), ',', ' ') FROM arrays)
+            UPDATE "pascals-triangle"
+            SET result = coalesce(trios.trio, '')
+            FROM (SELECT input, group_concat(ns, char(10)) AS trio 
+                  FROM "pascals-triangle" LEFT JOIN rows ON row <= input
+                  GROUP BY input) trios
+            WHERE "pascals-triangle".input = trios.input;
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution_1.sql")        
+        stmt = dedent("""\
+            WITH arrays(row, arr, ns) AS (
+              	SELECT 1, '[1,1]', '1'
+              	UNION
+              	SELECT row + 1,
+                	   (SELECT json_group_array(n)
+                        FROM (SELECT 1 n
+                              UNION ALL
+                              SELECT a.value + b.value n
+                              FROM json_each(arr) a, json_each(arr) AS b
+                              WHERE a.ROWID = b.ROWID - 1
+                              UNION ALL
+                              SELECT 1 n)),
+              			ns || char(10) || replace(trim(arr, '[]'), ',', ' ')
+              	FROM arrays
+              	LIMIT (SELECT max(input) FROM "pascals-triangle")
+            )
+            UPDATE "pascals-triangle"
+            SET result = coalesce(ns, '')
+            FROM ("pascals-triangle" a LEFT JOIN arrays ON row = input) trios
+            WHERE "pascals-triangle".input = trios.input;
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution_2.sql")
+        con.execute(stmt)
         stmt = """SELECT * FROM "pascals-triangle";"""
         res = con.execute(stmt)
         pprint(res.fetchall())
