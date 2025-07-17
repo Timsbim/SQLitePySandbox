@@ -1,4 +1,4 @@
-WITH arrays(row, arr, ns) AS (
+WITH rows(row, arr, ns) AS (
   	SELECT 1, '[1,1]', '1'
   	UNION
   	SELECT row + 1,
@@ -11,10 +11,10 @@ WITH arrays(row, arr, ns) AS (
                   UNION ALL
                   SELECT 1 n)),
   			ns || char(10) || replace(trim(arr, '[]'), ',', ' ')
-  	FROM arrays
+  	FROM rows
   	LIMIT (SELECT max(input) FROM "pascals-triangle")
 )
 UPDATE "pascals-triangle"
 SET result = coalesce(ns, '')
-FROM ("pascals-triangle" a LEFT JOIN arrays ON row = input) trios
+FROM ("pascals-triangle" a LEFT JOIN rows ON row = input) trios
 WHERE "pascals-triangle".input = trios.input;
