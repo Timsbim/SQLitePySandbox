@@ -145,11 +145,148 @@ def rest_api():
             pprint(res.fetchall())
             '''
 
-rest_api()
+
+#rest_api()
+
+
+def yacht():
+    """Exercism SQLite path exercise 28, Yacht:
+    https://exercism.org/tracks/sqlite/exercises/yacht"""
+ 
+    data_path = DATA_PATH / "Yacht"
+    sql_path = SQL_PATH / "Yacht"
+    sql_path.mkdir(parents=True, exist_ok=True)
+   
+    with sqlite.connect(":memory:") as con:
+        data_path = data_path / "data.csv"
+        stmt = dedent(f"""\
+            CREATE TABLE yacht (dice_results TEXT, category TEXT, result INT);
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
+        with open(data_path, "r") as file:
+            con.executemany(
+                "INSERT INTO yacht(dice_results, category) VALUES(?, ?);",
+                (row[:2] for row in csv.reader(file))
+            )
+        
+        stmt = dedent("""\
+            WITH rolls(res, cat, p, roll) AS (
+                SELECT dice_results, category, 4, CAST(substr(dice_results, 1, 1) AS INT) FROM yacht
+                UNION ALL
+                SELECT res, cat, p + 3, CAST(substr(res, p, 1) AS INT) FROM rolls WHERE p < 14
+            ),
+            groups(res, cat, roll, num, score) AS (
+                SELECT res, cat, roll, count(roll), sum(roll) FROM rolls GROUP BY res, cat, roll
+            ),
+            results(res, cat, val) AS (
+                SELECT
+                    res,
+                    cat,
+                    CASE cat
+                        WHEN 'ones' THEN ifnull(sum(score) FILTER (WHERE roll = 1), 0)
+                        WHEN 'twos' THEN ifnull(sum(score) FILTER (WHERE roll = 2), 0)
+                        WHEN 'threes' THEN ifnull(sum(score) FILTER (WHERE roll = 3), 0)
+                        WHEN 'fours' THEN ifnull(sum(score) FILTER (WHERE roll = 4), 0)
+                        WHEN 'fives' THEN ifnull(sum(score) FILTER (WHERE roll = 5), 0)
+                        WHEN 'sixes' THEN ifnull(sum(score) FILTER (WHERE roll = 6), 0)
+                        WHEN 'full house' THEN
+                            iif(group_concat(num, '') IN ('23', '32'), sum(score), 0)
+                        WHEN 'four of a kind' THEN CASE num
+                                WHEN 5 THEN score - roll
+                                ELSE ifnull(sum(score) FILTER (WHERE num = 4), 0)
+                            END
+                        WHEN 'little straight' THEN iif(group_concat(roll, '') = '12345', 30, 0)
+                        WHEN 'big straight' THEN iif(group_concat(roll, '') = '23456', 30, 0)
+                        WHEN 'choice' THEN sum(score)
+                        WHEN 'yacht' THEN iif(num = 5, 50, 0)
+                   END
+                FROM groups
+                GROUP BY res, cat
+                ORDER BY roll
+            )
+            UPDATE yacht
+            SET result = val
+            FROM results
+            WHERE (yacht.dice_results, yacht.category) = (results.res, results.cat);
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")       
+        con.execute(stmt)
+        stmt = "SELECT * FROM yacht;"
+        res = con.execute(stmt)
+        pprint(res.fetchall())
+
+
+#yacht()
+
+
+def roman_numerals():
+    """Exercism SQLite path exercise 27, Roman Numerals:
+    https://exercism.org/tracks/sqlite/exercises/roman-numerals"""
+
+    exercise = "Roman-Numerals"
+    data_path = DATA_PATH / exercise
+    sql_path = SQL_PATH / exercise
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        data_path = data_path / "data.csv"
+        stmt = dedent(f"""\
+            CREATE TABLE "roman-numerals" (number INT, result TEXT);
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
+        with open(data_path, "r") as file:
+            con.executemany(
+                """INSERT INTO "roman-numerals" (number, result) VALUES(?, ?);""",
+                csv.reader(file)
+            )
+
+        stmt = dedent("""\
+            WITH ns(i, n) AS (
+            	VALUES (0, 'M'), (1, 'D'), (2, 'C'), (3, 'L'), (4, 'X'), (5, 'V'), (6, 'I')
+            ),
+            rms(n, i, d, r, p, rm) AS (
+            	SELECT number, 0, number / 1000, number % 1000, 100, ''
+              	FROM "roman-numerals"
+              	UNION
+              	SELECT n, i + 2, r / p, r % p, p / 10,
+              		   CASE
+              		       WHEN d = 0 THEN ''
+              			   WHEN d < 4 THEN
+              			       printf('%.*c', d, (SELECT n FROM ns WHERE ns.i = rms.i))
+              			   WHEN d = 4 THEN
+              				   (SELECT n FROM ns WHERE ns.i = rms.i)
+              				     || (SELECT n FROM ns WHERE ns.i = rms.i - 1)
+              			   WHEN d = 5 THEN
+              				   (SELECT n FROM ns WHERE ns.i = rms.i - 1)
+              			   WHEN d < 9 THEN
+              				   (SELECT n FROM ns WHERE ns.i = rms.i - 1)
+              				     || printf('%.*c', d-5, (SELECT n FROM ns WHERE ns.i = rms.i))
+              			   ELSE
+              			       (SELECT n FROM ns WHERE ns.i = rms.i)
+              				     || (SELECT n FROM ns WHERE ns.i = rms.i - 2)
+              		   END
+              	FROM rms WHERE i < 8
+            )
+            UPDATE "roman-numerals"
+            SET result = rm
+            FROM (SELECT n, group_concat(rm, '') rm FROM rms GROUP BY n)
+            WHERE number = n;
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+
+        con.execute(stmt)
+        stmt = """SELECT * FROM "roman-numerals";"""
+        res = con.execute(stmt)
+        pprint(res.fetchall())
+
+
+#roman_numerals()
 
 
 def pascals_triangle():
-    """Exercism SQLite path exercise 23, Pascal's Triangle:
+    """Exercism SQLite path exercise 26, Pascal's Triangle:
     https://exercism.org/tracks/sqlite/exercises/pascals-triangle"""
 
     exercise = "Pascals-Triangle"
@@ -226,134 +363,8 @@ def pascals_triangle():
 #pascals_triangle()
 
 
-def rna_transcription():
-    """Exercism SQLite path exercise 27, RNA-Transcription:
-    https://exercism.org/tracks/sqlite/exercises/rna-transcription"""
-
-    exercise = "RNA-Transcription"
-    data_path = DATA_PATH / exercise
-    sql_path = SQL_PATH / exercise
-    sql_path.mkdir(parents=True, exist_ok=True)
-    
-    with sqlite.connect(":memory:") as con:
-        data_path = data_path / "data.csv"
-        stmt = dedent(f"""\
-            CREATE TABLE "rna-transcription" (dna TEXT, result TEXT);
-            """)
-        print_stmt(stmt, filepath=sql_path / "build_table.sql")
-        con.execute(stmt)
-        with open(data_path, "r") as file:
-            con.executemany(
-                """INSERT INTO "rna-transcription"(dna, result) VALUES(?, ?);""",
-                csv.reader(file)
-            )
-
-        stmt = dedent("""\
-            UPDATE "rna-transcription"
-            SET result = replace(replace(replace(replace(replace(dna, 'A', 'U'), 'T', 'A'), 'G', 'X'), 'C', 'G'), 'X', 'C')
-            """)
-        print_stmt(stmt, filepath=sql_path / "solution_1.sql")
-
-        stmt = dedent("""\
-            WITH RECURSIVE comps(dna, comp, pos) AS (
-                SELECT dna, "", 1 FROM "rna-transcription"
-                UNION
-                SELECT
-                    dna,
-                    comp || CASE substring(dna, pos, 1)
-                        WHEN "G" THEN "C"
-                        WHEN "C" THEN "G"
-                        WHEN "T" THEN "A"
-                        WHEN "A" THEN "U"
-                    END,
-                    pos + 1
-                FROM comps
-                WHERE pos <= length(dna) + 1
-            )
-            UPDATE "rna-transcription"
-            SET result = comp
-            FROM comps WHERE comps.dna = "rna-transcription".dna
-            """)
-        print_stmt(stmt, filepath=sql_path / "solution_2.sql")
-        con.execute(stmt)
-        stmt = """SELECT * FROM "rna-transcription";"""
-        res = con.execute(stmt)
-        pprint(res.fetchall())
-
-
-#rna_transcription()
-
-
-def etl():
-    """Exercism SQLite path exercise 26, ETL:
-    https://exercism.org/tracks/sqlite/exercises/etl"""
-
-    exercise = "ETL"
-    data_path = DATA_PATH / exercise
-    sql_path = SQL_PATH / exercise
-    sql_path.mkdir(parents=True, exist_ok=True)
-    
-    with sqlite.connect(":memory:") as con:
-        data_path = data_path / "data.csv"
-        stmt = dedent(f"""\
-            CREATE TABLE etl (input TEXT, result TEXT);
-            """)
-        print_stmt(stmt, filepath=sql_path / "build_table.sql")
-        con.execute(stmt)
-        with open(data_path, "r") as file:
-            con.executemany(
-                """INSERT INTO etl(input, result) VALUES(?, ?);""",
-                csv.reader(file)
-            )
-
-        stmt = dedent("""\
-            WITH lists(input, points, list) AS (
-                SELECT input, CAST(a.key AS INTEGER), a.value
-                FROM etl, json_each(etl.input) AS a
-            ),
-            chars(input, letter, points) AS (
-                SELECT input, lower(b.value), lists.points
-                FROM lists, json_each(list) as b
-                ORDER BY input, b.value
-            ),
-            results(input, result) AS (
-                SELECT input, json_group_object(letter, points)
-                FROM chars
-                GROUP BY input
-            )
-            UPDATE etl
-            SET result = results.result
-            FROM results WHERE etl.input = results.input;
-            """)
-        print_stmt(stmt, filepath=sql_path / "solution_1.sql")
-        
-        stmt = dedent("""\
-            UPDATE etl
-            SET result = (
-                WITH lists(points, list) AS (
-                    SELECT CAST(key AS INTEGER), value
-                    FROM json_each(input)
-                ),
-                chars(letter, points) AS (
-                    SELECT lower(value), lists.points
-                    FROM lists, json_each(list)
-                    ORDER BY value
-                )
-                SELECT json_group_object(letter, points) FROM chars
-            )
-            """)
-        print_stmt(stmt, filepath=sql_path / "solution_2.sql")        
-        con.execute(stmt)
-        stmt = """SELECT * FROM etl;"""
-        res = con.execute(stmt)
-        pprint(res.fetchall()) 
-
-
-#etl()
-
-
 def matching_brackets():
-    """Exercism SQLite path exercise 22, Matching Brackets:
+    """Exercism SQLite path exercise 25, Matching Brackets:
     https://exercism.org/tracks/sqlite/exercises/matching-brackets"""
 
     exercise = "Matching-Brackets"
@@ -432,79 +443,8 @@ def matching_brackets():
 #matching_brackets()
 
 
-def yacht():
-    """Exercism SQLite path exercise 21, Yacht:
-    https://exercism.org/tracks/sqlite/exercises/yacht"""
- 
-    data_path = DATA_PATH / "Yacht"
-    sql_path = SQL_PATH / "Yacht"
-    sql_path.mkdir(parents=True, exist_ok=True)
-   
-    with sqlite.connect(":memory:") as con:
-        data_path = data_path / "data.csv"
-        stmt = dedent(f"""\
-            CREATE TABLE yacht (dice_results TEXT, category TEXT, result INT);
-            """)
-        print_stmt(stmt, filepath=sql_path / "build_table.sql")
-        con.execute(stmt)
-        with open(data_path, "r") as file:
-            con.executemany(
-                "INSERT INTO yacht(dice_results, category) VALUES(?, ?);",
-                (row[:2] for row in csv.reader(file))
-            )
-        
-        stmt = dedent("""\
-            WITH rolls(res, cat, p, roll) AS (
-                SELECT dice_results, category, 4, CAST(substr(dice_results, 1, 1) AS INT) FROM yacht
-                UNION ALL
-                SELECT res, cat, p + 3, CAST(substr(res, p, 1) AS INT) FROM rolls WHERE p < 14
-            ),
-            groups(res, cat, roll, num, score) AS (
-                SELECT res, cat, roll, count(roll), sum(roll) FROM rolls GROUP BY res, cat, roll
-            ),
-            results(res, cat, val) AS (
-                SELECT
-                    res,
-                    cat,
-                    CASE cat
-                        WHEN 'ones' THEN ifnull(sum(score) FILTER (WHERE roll = 1), 0)
-                        WHEN 'twos' THEN ifnull(sum(score) FILTER (WHERE roll = 2), 0)
-                        WHEN 'threes' THEN ifnull(sum(score) FILTER (WHERE roll = 3), 0)
-                        WHEN 'fours' THEN ifnull(sum(score) FILTER (WHERE roll = 4), 0)
-                        WHEN 'fives' THEN ifnull(sum(score) FILTER (WHERE roll = 5), 0)
-                        WHEN 'sixes' THEN ifnull(sum(score) FILTER (WHERE roll = 6), 0)
-                        WHEN 'full house' THEN
-                            iif(group_concat(num, '') IN ('23', '32'), sum(score), 0)
-                        WHEN 'four of a kind' THEN CASE num
-                                WHEN 5 THEN score - roll
-                                ELSE ifnull(sum(score) FILTER (WHERE num = 4), 0)
-                            END
-                        WHEN 'little straight' THEN iif(group_concat(roll, '') = '12345', 30, 0)
-                        WHEN 'big straight' THEN iif(group_concat(roll, '') = '23456', 30, 0)
-                        WHEN 'choice' THEN sum(score)
-                        WHEN 'yacht' THEN iif(num = 5, 50, 0)
-                   END
-                FROM groups
-                GROUP BY res, cat
-                ORDER BY roll
-            )
-            UPDATE yacht
-            SET result = val
-            FROM results
-            WHERE (yacht.dice_results, yacht.category) = (results.res, results.cat);
-            """)
-        print_stmt(stmt, filepath=sql_path / "solution.sql")       
-        con.execute(stmt)
-        stmt = "SELECT * FROM yacht;"
-        res = con.execute(stmt)
-        pprint(res.fetchall())
-
-
-#yacht()
-
-
 def luhn():
-    """Exercism SQLite path exercise 20, Luhn:
+    """Exercism SQLite path exercise 24, Luhn:
     https://exercism.org/tracks/sqlite/exercises/luhn"""
  
     data_path = DATA_PATH / "Luhn"
@@ -578,7 +518,7 @@ def luhn():
 
 
 def isogram():
-    """Exercism SQLite path exercise 19, Isogram:
+    """Exercism SQLite path exercise 23, Isogram:
     https://exercism.org/tracks/sqlite/exercises/isogram"""
  
     sql_path = SQL_PATH / "Isogram"
@@ -627,7 +567,7 @@ def isogram():
 
 
 def high_scores():
-    """Exercism SQLite path exercise 18, High Scores:
+    """Exercism SQLite path exercise 22, High Scores:
     https://exercism.org/tracks/sqlite/exercises/high-scores"""
  
     data_path = DATA_PATH / "High-Scores"
@@ -720,7 +660,7 @@ def high_scores():
 
 
 def collatz():
-    """Exercism SQLite path exercise 17, Collatz Conjecture:
+    """Exercism SQLite path exercise 21, Collatz Conjecture:
     https://exercism.org/tracks/sqlite/exercises/collatz-conjecture"""
 
     sql_path = SQL_PATH / "Collatz-Conjecture"
@@ -758,7 +698,7 @@ def collatz():
 
 
 def armstrong_numbers():
-    """Exercism SQLite path exercise 16, Armstrong Numbers:
+    """Exercism SQLite path exercise 20, Armstrong Numbers:
     https://exercism.org/tracks/sqlite/exercises/armstrong-numbers"""
  
     sql_path = SQL_PATH / "Armstrong-Numbers"
@@ -804,7 +744,7 @@ def armstrong_numbers():
 
 
 def nucleotide_count():
-    """Exercism SQLite path exercise 15, Nucleotide Count:
+    """Exercism SQLite path exercise 18, Nucleotide Count:
     https://exercism.org/tracks/sqlite/exercises/nucleotide-count"""
 
     data_path = DATA_PATH / "Nucleotide-Count"
@@ -898,7 +838,7 @@ def nucleotide_count():
 
 
 def meetup():
-    """Exercism SQLite path exercise 14, Meetup:
+    """Exercism SQLite path exercise 17, Meetup:
     https://exercism.org/tracks/sqlite/exercises/meetup"""
     data_path = DATA_PATH / "Meetup"
     sql_path = SQL_PATH / "Meetup"
@@ -972,8 +912,76 @@ def meetup():
 #meetup()
 
 
+def etl():
+    """Exercism SQLite path exercise 15, ETL:
+    https://exercism.org/tracks/sqlite/exercises/etl"""
+
+    exercise = "ETL"
+    data_path = DATA_PATH / exercise
+    sql_path = SQL_PATH / exercise
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        data_path = data_path / "data.csv"
+        stmt = dedent(f"""\
+            CREATE TABLE etl (input TEXT, result TEXT);
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
+        with open(data_path, "r") as file:
+            con.executemany(
+                """INSERT INTO etl(input, result) VALUES(?, ?);""",
+                csv.reader(file)
+            )
+
+        stmt = dedent("""\
+            WITH lists(input, points, list) AS (
+                SELECT input, CAST(a.key AS INTEGER), a.value
+                FROM etl, json_each(etl.input) AS a
+            ),
+            chars(input, letter, points) AS (
+                SELECT input, lower(b.value), lists.points
+                FROM lists, json_each(list) as b
+                ORDER BY input, b.value
+            ),
+            results(input, result) AS (
+                SELECT input, json_group_object(letter, points)
+                FROM chars
+                GROUP BY input
+            )
+            UPDATE etl
+            SET result = results.result
+            FROM results WHERE etl.input = results.input;
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution_1.sql")
+        
+        stmt = dedent("""\
+            UPDATE etl
+            SET result = (
+                WITH lists(points, list) AS (
+                    SELECT CAST(key AS INTEGER), value
+                    FROM json_each(input)
+                ),
+                chars(letter, points) AS (
+                    SELECT lower(value), lists.points
+                    FROM lists, json_each(list)
+                    ORDER BY value
+                )
+                SELECT json_group_object(letter, points) FROM chars
+            )
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution_2.sql")        
+        con.execute(stmt)
+        stmt = """SELECT * FROM etl;"""
+        res = con.execute(stmt)
+        pprint(res.fetchall()) 
+
+
+#etl()
+
+
 def eliuds_eggs():
-    """Exercism SQLite path exercise 13, Eliuds Eggs:
+    """Exercism SQLite path exercise 14, Eliuds Eggs:
     https://exercism.org/tracks/sqlite/exercises/eliuds-eggs"""
  
     sql_path = SQL_PATH / "Eliuds-Eggs"
@@ -1009,7 +1017,7 @@ def eliuds_eggs():
 
 
 def bob():
-    """Exercism SQLite path exercise 12, Bob:
+    """Exercism SQLite path exercise 13, Bob:
     https://exercism.org/tracks/sqlite/exercises/bob"""
     data_path = DATA_PATH / "Bob"
     sql_path = SQL_PATH / "Bob"
@@ -1064,7 +1072,7 @@ def bob():
 
 
 def allergies():
-    """Exercism SQLite path exercise 11, Allergies:
+    """Exercism SQLite path exercise 12, Allergies:
     https://exercism.org/tracks/sqlite/exercises/allergies"""
 
     data_path = DATA_PATH / "Allergies"
@@ -1167,39 +1175,66 @@ def allergies():
 #allergies()
 
 
-def two_fer():
-    """Exercism SQLite path exercise 10, Two-Fer:
-    https://exercism.org/tracks/sqlite/exercises/two-fer"""
+def rna_transcription():
+    """Exercism SQLite path exercise 11, RNA-Transcription:
+    https://exercism.org/tracks/sqlite/exercises/rna-transcription"""
 
-    sql_path = SQL_PATH / "Two-Fer"
+    exercise = "RNA-Transcription"
+    data_path = DATA_PATH / exercise
+    sql_path = SQL_PATH / exercise
     sql_path.mkdir(parents=True, exist_ok=True)
     
     with sqlite.connect(":memory:") as con:
-        stmt = dedent("""\
-            CREATE TABLE twofer (input TEXT, response TEXT);
-            INSERT INTO twofer (input)
-                VALUES (''), ('Alice'), ('Bob');
+        data_path = data_path / "data.csv"
+        stmt = dedent(f"""\
+            CREATE TABLE "rna-transcription" (dna TEXT, result TEXT);
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
-        con.executescript(stmt)
-        
-        stmt = dedent("""\
-            UPDATE twofer
-            SET response =
-                'One for ' || coalesce(nullif(input, ''), 'you') || ', one for me.';
-            """)
-        print_stmt(stmt, filepath=sql_path / "solution.sql")        
         con.execute(stmt)
-        stmt = "SELECT * FROM twofer;"
+        with open(data_path, "r") as file:
+            con.executemany(
+                """INSERT INTO "rna-transcription"(dna, result) VALUES(?, ?);""",
+                csv.reader(file)
+            )
+
+        stmt = dedent("""\
+            UPDATE "rna-transcription"
+            SET result = replace(replace(replace(replace(replace(dna, 'A', 'U'), 'T', 'A'), 'G', 'X'), 'C', 'G'), 'X', 'C')
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution_1.sql")
+
+        stmt = dedent("""\
+            WITH RECURSIVE comps(dna, comp, pos) AS (
+                SELECT dna, "", 1 FROM "rna-transcription"
+                UNION
+                SELECT
+                    dna,
+                    comp || CASE substring(dna, pos, 1)
+                        WHEN "G" THEN "C"
+                        WHEN "C" THEN "G"
+                        WHEN "T" THEN "A"
+                        WHEN "A" THEN "U"
+                    END,
+                    pos + 1
+                FROM comps
+                WHERE pos <= length(dna) + 1
+            )
+            UPDATE "rna-transcription"
+            SET result = comp
+            FROM comps WHERE comps.dna = "rna-transcription".dna
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution_2.sql")
+        con.execute(stmt)
+        stmt = """SELECT * FROM "rna-transcription";"""
         res = con.execute(stmt)
         pprint(res.fetchall())
 
 
-#two_fer()
+#rna_transcription()
 
 
 def resistor_color_duo():
-    """Exercism SQLite path exercise 9, Resistor Color Duo:
+    """Exercism SQLite path exercise 10, Resistor Color Duo:
     https://exercism.org/tracks/sqlite/exercises/resistor-color-duo"""
 
     sql_path = SQL_PATH / "Resistor-Color-Duo"
@@ -1240,7 +1275,7 @@ def resistor_color_duo():
 
 
 def resistor_color():
-    """Exercism SQLite path exercise 8, Resistor Color:
+    """Exercism SQLite path exercise 9, Resistor Color:
     https://exercism.org/tracks/sqlite/exercises/resistor-color"""
 
     sql_path = SQL_PATH / "Resistor-Color"
@@ -1302,7 +1337,7 @@ def resistor_color():
 
 
 def raindrops():
-    """Exercism SQLite path exercise 7, Raindrops:
+    """Exercism SQLite path exercise 8, Raindrops:
     https://exercism.org/tracks/sqlite/exercises/raindrops"""
 
     sql_path = SQL_PATH / "Raindrops"
@@ -1342,7 +1377,7 @@ def raindrops():
 
 
 def leap():
-    """Exercism SQLite path exercise 6, Leap:
+    """Exercism SQLite path exercise 7, Leap:
     https://exercism.org/tracks/sqlite/exercises/leap"""
 
     sql_path = SQL_PATH / "Leap"
@@ -1377,7 +1412,7 @@ def leap():
 
 
 def grains():
-    """Exercism SQLite path exercise 5, Grains:
+    """Exercism SQLite path exercise 6, Grains:
     https://exercism.org/tracks/sqlite/exercises/grains"""
 
     sql_path = SQL_PATH / "Grains"
@@ -1433,7 +1468,7 @@ def grains():
 
 
 def gigasecond():
-    """Exercism SQLite path exercise 4, Gigasecond:
+    """Exercism SQLite path exercise 5, Gigasecond:
     https://exercism.org/tracks/sqlite/exercises/gigasecond"""
 
     sql_path = SQL_PATH / "Gigasecond"
@@ -1466,7 +1501,7 @@ def gigasecond():
 
 
 def difference_of_squares():
-    """Exercism SQLite path exercise 3, Difference-of-Squares:
+    """Exercism SQLite path exercise 4, Difference-of-Squares:
     https://exercism.org/tracks/sqlite/exercises/difference-of-squares"""
 
     sql_path = SQL_PATH / "Difference-of-Squares"
@@ -1511,7 +1546,7 @@ def difference_of_squares():
 
 
 def darts():
-    """Exercism SQLite path exercise 2, Darts:
+    """Exercism SQLite path exercise 3, Darts:
     https://exercism.org/tracks/sqlite/exercises/darts"""
 
     sql_path = SQL_PATH / "Darts"
@@ -1548,3 +1583,34 @@ def darts():
 
 
 #darts()
+
+
+def two_fer():
+    """Exercism SQLite path exercise 2, Two-Fer:
+    https://exercism.org/tracks/sqlite/exercises/two-fer"""
+
+    sql_path = SQL_PATH / "Two-Fer"
+    sql_path.mkdir(parents=True, exist_ok=True)
+    
+    with sqlite.connect(":memory:") as con:
+        stmt = dedent("""\
+            CREATE TABLE twofer (input TEXT, response TEXT);
+            INSERT INTO twofer (input)
+                VALUES (''), ('Alice'), ('Bob');
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        
+        stmt = dedent("""\
+            UPDATE twofer
+            SET response =
+                'One for ' || coalesce(nullif(input, ''), 'you') || ', one for me.';
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")        
+        con.execute(stmt)
+        stmt = "SELECT * FROM twofer;"
+        res = con.execute(stmt)
+        pprint(res.fetchall())
+
+
+#two_fer()
