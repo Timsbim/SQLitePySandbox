@@ -17,7 +17,7 @@ rms(n, i, d, r, p, rm) AS (
                 (SELECT n FROM ns WHERE ns.i = rms.i - 1)
             WHEN d < 9 THEN
                 (SELECT n FROM ns WHERE ns.i = rms.i - 1)
-                  || printf('%.*c', d-5, (SELECT n FROM ns WHERE ns.i = rms.i))
+                  || printf('%.*c', d - 5, (SELECT n FROM ns WHERE ns.i = rms.i))
             ELSE
                 (SELECT n FROM ns WHERE ns.i = rms.i)
                   || (SELECT n FROM ns WHERE ns.i = rms.i - 2)
