@@ -2,8 +2,7 @@ WITH ns(i, n) AS (
 	VALUES (0, 'M'), (1, 'D'), (2, 'C'), (3, 'L'), (4, 'X'), (5, 'V'), (6, 'I')
 ),
 rms(n, i, d, r, p, rm) AS (
-	SELECT number, 0, number / 1000, number % 1000, 100, ''
-  	FROM "roman-numerals"
+	SELECT number, 0, number / 1000, number % 1000, 100, '' FROM "roman-numerals"
   	UNION
   	SELECT n, i + 2, r / p, r % p, p / 10,
         CASE
