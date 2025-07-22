@@ -43,110 +43,63 @@ def rest_api():
     sql_path.mkdir(parents=True, exist_ok=True)
     
     with sqlite.connect(":memory:") as con:
-            data_path = data_path / "data.csv"
-            stmt = dedent("""\
-                CREATE TABLE "rest-api" (database TEXT, payload TEXT, url TEXT, result TEXT);
-                """)
-            #print_stmt(stmt, filepath=sql_path / "build_table.sql")
-            con.execute(stmt)
-            with open(data_path, "r") as file:
-                con.executemany(
-                    """INSERT INTO "rest-api" VALUES(json(?), json(?), ?, ?);""",
-                    csv.reader(file, delimiter=";")
-                )
-            stmt = dedent("""\
-                SELECT json_group_array(value ORDER BY (value ->> '$.name'))
-                FROM "rest-api", json_each(database, '$.users')
-                """)
-            #stmt = """SELECT * FROM "rest-api";"""
-            res = con.execute(stmt)
-            pprint(list(res.fetchall()))
-            #for row in res.fetchall():
-            #    print("\n".join(row))
-        
-            #pprint(res.fetchall())
-            '''
-            stmt = dedent("""\
-                UPDATE "rest-api"
-                SET result = (
-                    CASE url
-                        WHEN '/users' THEN
-                            CASE payload
-                                WHEN 'null' THEN (
-                                    SELECT json_object(
-                                        "users",
-                                        json_group_array(json(value))
-                                    )
-                                    FROM (
-                                        SELECT value
-                                        FROM json_each(database, '$.users')
-                                        ORDER BY value ->> '$.name'
-                                    )
-                                ) ELSE (
-                                    SELECT json_object(
-                                        "users",
-                                        json_group_array(json(value))
-                                    )
-                                     FROM (
-                                        SELECT value, value ->> '$.name' AS name
-                                        FROM json_each(database, '$.users')
-                                        WHERE name IN (
-                                            SELECT value
-                                            FROM json_each(payload, '$.users')
-                                        )
-                                        ORDER BY name
-                                    )
-                                )
-                            END
-                        WHEN '/add' THEN
-                            json_object(
-                                'name', payload ->> '$.user',
-                                'owes', json('{}'),
-                                'owed_by', json('{}'),
-                                'balance', 0
+        stmt = dedent("""\
+            CREATE TABLE "rest-api" (database TEXT, payload TEXT, url TEXT, result TEXT);
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
+        with open(data_path / "data.csv", "r") as file:
+            con.executemany(
+                """INSERT INTO "rest-api" VALUES(json(?), json(?), ?, ?);""",
+                csv.reader(file, delimiter=";")
+            )
+        stmt = """SELECT * FROM "rest-api";"""
+        res = con.execute(stmt)
+        pprint(list(res.fetchall()))
+
+        stmt = dedent("""\
+            UPDATE "rest-api"
+            SET result = (
+                CASE url
+                    WHEN '/users' THEN
+                        CASE payload
+                            WHEN '{}' THEN (
+                                SELECT json_object("users", json_group_array(json(value)))
+                                FROM (SELECT value FROM json_each(database, '$.users') ORDER BY value ->> '$.name')
+                            ) ELSE (
+                                SELECT json_object("users", json_group_array(json(value)))
+                                FROM (SELECT value, value ->> '$.name' AS name FROM json_each(database, '$.users')
+                                      WHERE name IN (SELECT value FROM json_each(payload, '$.users')) ORDER BY name)
                             )
-                        WHEN '/iou' THEN (
-                            --coalesce(database ->> '$.users[5]', '"foo!"')                           
-                            SELECT json_group_array(json(user))
-                            FROM (
-                                SELECT
-                                    CASE value ->> '$.name'
-                                        WHEN "rest-api".payload ->> '$.lender' THEN
-                                            "rest-api".payload ->> '$.amount'
-                                        WHEN "rest-api".payload ->> '$.borrower' THEN
-                                            json_set(
-                                                value,
-                                                '$.amount',
-                                                coalesce(value ->> '$.amount', 0)
-                                                    + ("rest-api".payload ->> '$.amount'),
-                                                value,
-                                                '$.owed_by',
-                                                json_set(
-                                                    value ->> '$.owed_by',
-                                                    "rest-api".payload ->> '$.borrower',
-                                                    coalesce(
-                                                        value ->> ('$.owed_by.' || ("rest-api".payload -> '$.borrower')),
-                                                        0
-                                                    ) + ("rest-api".payload ->> '$.amount')
-                                                )
-                                            )
-                                    END AS user
-                                FROM json_each(database, '$.users')
-                                WHERE user IS NOT NULL
-                            )
+                        END
+                    WHEN '/add' THEN
+                        json_object(
+                            'name', payload ->> '$.user',
+                            'owes', json('{}'),
+                            'owed_by', json('{}'),
+                            'balance', 0
                         )
-                    END
-                )
-                """)
-            print_stmt(stmt, filepath=sql_path / "solution.sql")
-            con.execute(stmt)
-            stmt = """SELECT * FROM "rest-api";"""
-            res = con.execute(stmt)
-            pprint(res.fetchall())
-            '''
+                    WHEN '/iou' THEN (
+                        SELECT json_group_array(value)
+                        FROM (
+                            SELECT value, value ->> '$.name' AS name
+                            FROM json_each(database, '$.users')
+                            WHERE
+                                name = payload ->> '$.lender'
+                                OR name = payload ->> '$.borrower'
+                        )
+                    )
+                END
+            )
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+        stmt = """SELECT * FROM "rest-api";"""
+        res = con.execute(stmt)
+        pprint(res.fetchall())
 
 
-#rest_api()
+rest_api()
 
 
 def yacht():
