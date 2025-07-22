@@ -34,7 +34,7 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 
 
 def rest_api():
-    """Exercism SQLite path exercise 28, REST API:
+    """Exercism SQLite path exercise 19, REST API:
     https://exercism.org/tracks/sqlite/exercises/rest-api"""
 
     exercise = "REST-API"
@@ -65,11 +65,16 @@ def rest_api():
                         CASE payload
                             WHEN '{}' THEN (
                                 SELECT json_object("users", json_group_array(json(value)))
-                                FROM (SELECT value FROM json_each(database, '$.users') ORDER BY value ->> '$.name')
+                                FROM (SELECT value
+                                      FROM json_each(database, '$.users')
+                                      ORDER BY value ->> '$.name')
                             ) ELSE (
                                 SELECT json_object("users", json_group_array(json(value)))
-                                FROM (SELECT value, value ->> '$.name' AS name FROM json_each(database, '$.users')
-                                      WHERE name IN (SELECT value FROM json_each(payload, '$.users')) ORDER BY name)
+                                FROM (SELECT value, value ->> '$.name' AS name
+                                      FROM json_each(database, '$.users')
+                                      WHERE name IN (SELECT value
+                                                     FROM json_each(payload, '$.users'))
+                                      ORDER BY name)
                             )
                         END
                     WHEN '/add' THEN
