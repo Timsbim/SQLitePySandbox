@@ -44,7 +44,7 @@ def rest_api():
     
     with sqlite.connect(":memory:") as con:
             data_path = data_path / "data.csv"
-            stmt = dedent(f"""\
+            stmt = dedent("""\
                 CREATE TABLE "rest-api" (database TEXT, payload TEXT, url TEXT, result TEXT);
                 """)
             #print_stmt(stmt, filepath=sql_path / "build_table.sql")
@@ -159,7 +159,7 @@ def yacht():
    
     with sqlite.connect(":memory:") as con:
         data_path = data_path / "data.csv"
-        stmt = dedent(f"""\
+        stmt = dedent("""\
             CREATE TABLE yacht (dice_results TEXT, category TEXT, result INT);
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
@@ -231,7 +231,7 @@ def roman_numerals():
     
     with sqlite.connect(":memory:") as con:
         data_path = data_path / "data.csv"
-        stmt = dedent(f"""\
+        stmt = dedent("""\
             CREATE TABLE "roman-numerals" (number INT, result TEXT);
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
@@ -295,7 +295,7 @@ def pascals_triangle():
     
     with sqlite.connect(":memory:") as con:
         data_path = data_path / "data.csv"
-        stmt = dedent(f"""\
+        stmt = dedent("""\
             CREATE TABLE "pascals-triangle" (input INT, result TEXT);
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
@@ -373,7 +373,7 @@ def matching_brackets():
    
     with sqlite.connect(":memory:") as con:
         data_path = data_path / "data.csv"
-        stmt = dedent(f"""\
+        stmt = dedent("""\
             CREATE TABLE "matching-brackets" (input TEXT, result BOOLEAN);
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
@@ -844,7 +844,7 @@ def meetup():
     sql_path.mkdir(parents=True, exist_ok=True)
  
     with sqlite.connect(":memory:") as con:
-        stmt = dedent(f"""\
+        stmt = dedent("""\
             CREATE TABLE meetup (
                 year INTEGER,
                 month INTEGER,
@@ -911,6 +911,63 @@ def meetup():
 #meetup()
 
 
+def kindergarten_garden():
+    """Exercism SQLite path exercise 16, Kindergarten-Garden:
+    https://exercism.org/tracks/sqlite/exercises/kindergarten-garden"""
+   
+    exercise = "Kindergarten-Garden"
+    data_path = DATA_PATH / exercise
+    sql_path = SQL_PATH / exercise
+    sql_path.mkdir(parents=True, exist_ok=True)
+   
+    with sqlite.connect(":memory:") as con:
+        data_path = data_path / "data.csv"
+        stmt = dedent("""\
+            CREATE TABLE "kindergarten-garden" (diagram TEXT, student TEXT, result TEXT);
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.txt")
+        con.execute(stmt)
+        with open(data_path, "r") as file:
+            con.executemany(
+                """INSERT INTO "kindergarten-garden"(diagram, student, result) VALUES(?, ?, ?);""",
+                csv.reader(file)
+            )
+ 
+        stmt = dedent("""\
+            WITH students(n, student) AS (
+                VALUES (0, 'Alice'), (1, 'Bob'), (2, 'Charlie'), (3, 'David'),
+                       (4, 'Eve'), (5, 'Fred'), (6, 'Ginny'), (7, 'Harriet'),
+                       (8, 'Ileana'), (9, 'Joseph'), (10, 'Kincaid'), (11, 'Larry')
+            ),
+            plants(i, student, diagram, n, plant) AS (
+                SELECT 0, s.student, diagram, 2 * n + 1, ''
+                FROM "kindergarten-garden" kg, students s WHERE kg.student = s.student
+                UNION
+                SELECT i + 1, student, diagram,
+                    CASE i WHEN 1 THEN n + length(diagram) / 2 ELSE n + 1 END,
+                    plant || CASE i WHEN 0 THEN '' ELSE ',' END || CASE substr(diagram, n, 1)
+                        WHEN 'G' THEN 'grass'
+                        WHEN 'C' THEN 'clover'
+                        WHEN 'R' THEN 'radishes'
+                        ELSE 'violets'
+                    END
+                FROM plants WHERE i < 4
+            )
+            UPDATE "kindergarten-garden" AS kg
+            SET result = p.plant
+            FROM plants p
+            WHERE kg.student = p.student AND kg.diagram = p.diagram AND p.i = 4;
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+       
+        res = con.execute("""SELECT * FROM "kindergarten-garden";""")
+        pprint(res.fetchall())
+
+
+#kindergarten_garden()
+
+
 def etl():
     """Exercism SQLite path exercise 15, ETL:
     https://exercism.org/tracks/sqlite/exercises/etl"""
@@ -922,9 +979,7 @@ def etl():
     
     with sqlite.connect(":memory:") as con:
         data_path = data_path / "data.csv"
-        stmt = dedent(f"""\
-            CREATE TABLE etl (input TEXT, result TEXT);
-            """)
+        stmt = dedent("""CREATE TABLE etl (input TEXT, result TEXT);""")
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.execute(stmt)
         with open(data_path, "r") as file:
@@ -1024,9 +1079,7 @@ def bob():
   
     with sqlite.connect(":memory:") as con:
         data_path = data_path / "data.csv"
-        stmt = dedent(f"""\
-            CREATE TABLE bob (input TEXT, reply TEXT);
-            """)
+        stmt = dedent("""CREATE TABLE bob (input TEXT, reply TEXT);""")
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
         con.execute(stmt)
         with open(data_path, "r") as file:
@@ -1185,7 +1238,7 @@ def rna_transcription():
     
     with sqlite.connect(":memory:") as con:
         data_path = data_path / "data.csv"
-        stmt = dedent(f"""\
+        stmt = dedent("""\
             CREATE TABLE "rna-transcription" (dna TEXT, result TEXT);
             """)
         print_stmt(stmt, filepath=sql_path / "build_table.sql")
