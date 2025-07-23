@@ -36,12 +36,12 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 def rest_api():
     """Exercism SQLite path exercise 19, REST API:
     https://exercism.org/tracks/sqlite/exercises/rest-api"""
-
+ 
     exercise = "REST-API"
     data_path = DATA_PATH / exercise
     sql_path = SQL_PATH / exercise
     sql_path.mkdir(parents=True, exist_ok=True)
-    
+   
     with sqlite.connect(":memory:") as con:
         stmt = dedent("""\
             CREATE TABLE "rest-api" (database TEXT, payload TEXT, url TEXT, result TEXT);
@@ -53,56 +53,46 @@ def rest_api():
                 """INSERT INTO "rest-api" VALUES(json(?), json(?), ?, ?);""",
                 csv.reader(file, delimiter=";")
             )
-        stmt = """SELECT * FROM "rest-api";"""
-        res = con.execute(stmt)
-        pprint(list(res.fetchall()))
-
+       
+        pprint(con.execute("""SELECT * FROM "rest-api";""").fetchall())
+ 
         stmt = dedent("""\
             UPDATE "rest-api"
             SET result = (
                 CASE url
                     WHEN '/users' THEN
                         CASE payload
-                            WHEN '{}' THEN (
-                                SELECT json_object("users", json_group_array(json(value)))
-                                FROM (SELECT value
-                                      FROM json_each(database, '$.users')
-                                      ORDER BY value ->> '$.name')
-                            ) ELSE (
-                                SELECT json_object("users", json_group_array(json(value)))
-                                FROM (SELECT value, value ->> '$.name' AS name
-                                      FROM json_each(database, '$.users')
-                                      WHERE name IN (SELECT value
-                                                     FROM json_each(payload, '$.users'))
-                                      ORDER BY name)
-                            )
+                            WHEN '{}' THEN
+                                (SELECT json_object('users', json_group_array(json(value)))
+                                 FROM (SELECT value
+                                       FROM json_each(database, '$.users')
+                                       ORDER BY value ->> '$.name'))
+                            ELSE
+                                (SELECT json_object('users', json_group_array(json(value)))
+                                 FROM (SELECT value, value ->> '$.name' AS name
+                                       FROM json_each(database, '$.users')
+                                       WHERE name IN (SELECT value
+                                                      FROM json_each(payload, '$.users'))
+                                       ORDER BY name))
                         END
                     WHEN '/add' THEN
-                        json_object(
-                            'name', payload ->> '$.user',
-                            'owes', json('{}'),
-                            'owed_by', json('{}'),
-                            'balance', 0
-                        )
-                    WHEN '/iou' THEN (
-                        SELECT json_group_array(value)
-                        FROM (
-                            SELECT value, value ->> '$.name' AS name
-                            FROM json_each(database, '$.users')
-                            WHERE
-                                name = payload ->> '$.lender'
-                                OR name = payload ->> '$.borrower'
-                        )
-                    )
+                        json_object('name', payload ->> '$.user',
+                                    'owes', json('{}'),
+                                    'owed_by', json('{}'),
+                                    'balance', 0)
+                    WHEN '/iou' THEN
+                        (SELECT json_group_array(value)
+                         FROM (SELECT value, value ->> '$.name' AS name
+                               FROM json_each(database, '$.users')
+                               WHERE name IN (payload ->> '$.lender', payload ->> '$.borrower')))
                 END
             )
             """)
         print_stmt(stmt, filepath=sql_path / "solution.sql")
         con.execute(stmt)
-        stmt = """SELECT * FROM "rest-api";"""
-        res = con.execute(stmt)
-        pprint(res.fetchall())
-
+       
+        pprint(con.execute("""SELECT * FROM "rest-api";""").fetchall())
+ 
 
 rest_api()
 
