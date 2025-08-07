@@ -10,7 +10,8 @@ SET result = (
       	FROM (SELECT * FROM tmp1 ORDER BY c) GROUP BY low
     ),
   	tmp2(id, word, low, i, c) AS (
-    	SELECT id, value, lower(value), 2, substr(lower(value), 1, 1) FROM json_each(candidates)
+    	SELECT rowid, value, lower(value), 2, substr(lower(value), 1, 1)
+        FROM json_each(candidates)
         UNION
       	SELECT id, word, low, i+1, substr(low, i, 1) FROM tmp2 WHERE i <= length(word)
     ),
