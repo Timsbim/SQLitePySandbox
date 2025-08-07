@@ -33,6 +33,38 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
+def anagram():
+    """Exercism SQLite path exercise Anagram:
+    https://exercism.org/tracks/sqlite/exercises/anagram"""
+ 
+    exercise = "Anagram"
+    data_path = DATA_PATH / exercise
+    sql_path = SQL_PATH / exercise
+    sql_path.mkdir(parents=True, exist_ok=True)
+ 
+    with sqlite.connect(":memory:") as con:
+        stmt = dedent("""\
+            CREATE TABLE anagram (
+                subject    TEXT NOT NULL,
+                candidates TEXT NOT NULL,  -- json array of strings
+                result     TEXT            -- json array of strings
+            );
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
+        with open(data_path / "data.csv", "r") as file:
+            con.executemany(
+                """INSERT INTO anagram(subject, candidates) VALUES(?, json(?));""",
+                csv.reader(file, delimiter=";")
+            )
+       
+        res = con.execute("""SELECT * FROM anagram;""")
+        pprint(res.fetchall())
+
+
+anagram()
+
+
 def rest_api():
     """Exercism SQLite path exercise 19, REST API:
     https://exercism.org/tracks/sqlite/exercises/rest-api"""
@@ -53,9 +85,7 @@ def rest_api():
                 """INSERT INTO "rest-api" VALUES(json(?), json(?), ?, ?);""",
                 csv.reader(file, delimiter=";")
             )
-       
-        pprint(con.execute("""SELECT * FROM "rest-api";""").fetchall())
- 
+        
         stmt = dedent("""\
             UPDATE "rest-api"
             SET result = (
@@ -94,7 +124,7 @@ def rest_api():
         pprint(con.execute("""SELECT * FROM "rest-api";""").fetchall())
  
 
-rest_api()
+#rest_api()
 
 
 def yacht():
