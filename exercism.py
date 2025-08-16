@@ -33,68 +33,6 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
-def anagram():
-    """Exercism SQLite path exercise Anagram:
-    https://exercism.org/tracks/sqlite/exercises/anagram"""
- 
-    exercise = "Anagram"
-    data_path = DATA_PATH / exercise
-    sql_path = SQL_PATH / exercise
-    sql_path.mkdir(parents=True, exist_ok=True)
- 
-    with sqlite.connect(":memory:") as con:
-        stmt = dedent("""\
-            CREATE TABLE anagram (
-                subject    TEXT NOT NULL,
-                candidates TEXT NOT NULL,  -- json array of strings
-                result     TEXT            -- json array of strings
-            );
-            """)
-        print_stmt(stmt, filepath=sql_path / "build_table.sql")
-        con.execute(stmt)
-        with open(data_path / "data.csv", "r") as file:
-            con.executemany(
-                """INSERT INTO anagram(subject, candidates) VALUES(?, json(?));""",
-                csv.reader(file, delimiter=";")
-            )
-
-        stmt = dedent("""\
-            UPDATE anagram
-            SET result = (
-              	WITH tmp1(low, i, c) AS (
-                	SELECT lower(subject), 2, substr(lower(subject), 1, 1)
-                    UNION
-                    SELECT low, i+1, substr(low, i, 1) FROM tmp1 WHERE i <= length(low)
-                ),
-                word(low, norm) AS (
-                	SELECT low, group_concat(c, '')
-                  	FROM (SELECT * FROM tmp1 ORDER BY c) GROUP BY low
-                ),
-              	tmp2(id, word, low, i, c) AS (
-                	SELECT rowid, value, lower(value), 2, substr(lower(value), 1, 1)
-                    FROM json_each(candidates)
-                    UNION
-                  	SELECT id, word, low, i+1, substr(low, i, 1) FROM tmp2 WHERE i <= length(word)
-                ),
-              	words(word, low, norm) AS (
-                	SELECT word, low, group_concat(c, '')
-                    FROM (SELECT * FROM tmp2 ORDER BY id, c) GROUP BY id
-                )
-            	SELECT json_group_array(word)
-              	FROM words, word
-                WHERE words.low != word.low AND words.norm = word.norm
-            )
-            """)
-        print_stmt(stmt, filepath=sql_path / "solution.sql")
-        con.execute(stmt)
-        
-        res = con.execute("""SELECT * FROM anagram;""")
-        pprint(res.fetchall())
-
-
-anagram()
-
-
 def rest_api():
     """Exercism SQLite path exercise 19, REST API:
     https://exercism.org/tracks/sqlite/exercises/rest-api"""
@@ -155,6 +93,134 @@ def rest_api():
  
 
 #rest_api()
+
+
+def tournament():
+    """Exercism SQLite path exercise Tournament:
+    https://exercism.org/tracks/sqlite/exercises/tournament"""
+ 
+    exercise = "Tournament"
+    data_path = DATA_PATH / exercise
+    sql_path = SQL_PATH / exercise
+    sql_path.mkdir(parents=True, exist_ok=True)
+ 
+    with sqlite.connect(":memory:") as con:
+        stmt = dedent("""\
+            CREATE TABLE tournament ( input TEXT NOT NULL, result TEXT );
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
+        data = (data_path / "data.csv").read_text()
+        stmt = f"""INSERT INTO tournament(input) VALUES('{data}');"""
+        con.execute(stmt)
+
+        stmt = dedent("""\
+            UPDATE tournament SET result = (
+                WITH cs(i, r, j, c) AS (
+                    SELECT 2, 0, 0, substr(input, 1, 1)
+                    UNION ALL
+                    SELECT i + 1, r + (c = char(10)), (j + (c in (';', char(10)))) % 3, substr(input, i, 1)
+                    FROM cs WHERE i <= length(input)
+                ),
+                ms(A, B, res) AS (
+                    SELECT group_concat(c, '') FILTER (WHERE j = 0),
+                           group_concat(c, '') FILTER (WHERE j = 1),
+                           group_concat(c, '') FILTER (WHERE j = 2)
+                    FROM cs WHERE c NOT in (';', char(10), '') GROUP BY r
+                ),
+                points(Team, P) AS (
+                    SELECT A, CASE res WHEN 'win' THEN 3 WHEN 'draw' THEN 1 ELSE 0 END FROM ms
+                    UNION ALL
+                    SELECT B, CASE res WHEN 'win' THEN 0 WHEN 'draw' THEN 1 ELSE 3 END FROM ms
+                ),
+                results(Team, MP, W, D, L, P) AS (
+                    SELECT Team,
+                           count(*),
+                           count(P) FILTER (WHERE P = 3),
+                           count(P) FILTER (WHERE P = 1),
+                           count(P) FILTER (WHERE P = 0),
+                           sum(P)
+                    FROM points GROUP BY Team
+                ),
+                rows(r) AS (
+                    SELECT 'Team                           | MP |  W |  D |  L |  P'
+                    UNION ALL
+                    SELECT format('%-31s|% 3u |% 3u |% 3u |% 3u |% 3u', Team, MP, W, D, L, P)
+                    FROM (SELECT * FROM results ORDER BY P DESC, Team)
+                )
+                SELECT group_concat(r, char(10)) FROM rows
+            )
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+        
+        res = con.execute("""SELECT * FROM tournament;""")
+        pprint(res.fetchall())
+
+
+#tournament()
+
+
+def anagram():
+    """Exercism SQLite path exercise Anagram:
+    https://exercism.org/tracks/sqlite/exercises/anagram"""
+ 
+    exercise = "Anagram"
+    data_path = DATA_PATH / exercise
+    sql_path = SQL_PATH / exercise
+    sql_path.mkdir(parents=True, exist_ok=True)
+ 
+    with sqlite.connect(":memory:") as con:
+        stmt = dedent("""\
+            CREATE TABLE anagram (
+                subject    TEXT NOT NULL,
+                candidates TEXT NOT NULL,  -- json array of strings
+                result     TEXT            -- json array of strings
+            );
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.execute(stmt)
+        with open(data_path / "data.csv", "r") as file:
+            con.executemany(
+                """INSERT INTO anagram(subject, candidates) VALUES(?, json(?));""",
+                csv.reader(file, delimiter=";")
+            )
+
+        stmt = dedent("""\
+            UPDATE anagram
+            SET result = (
+              	WITH tmp1(low, i, c) AS (
+                	SELECT lower(subject), 2, substr(lower(subject), 1, 1)
+                    UNION
+                    SELECT low, i+1, substr(low, i, 1) FROM tmp1 WHERE i <= length(low)
+                ),
+                word(low, norm) AS (
+                	SELECT low, group_concat(c, '')
+                  	FROM (SELECT * FROM tmp1 ORDER BY c) GROUP BY low
+                ),
+              	tmp2(id, word, low, i, c) AS (
+                	SELECT rowid, value, lower(value), 2, substr(lower(value), 1, 1)
+                    FROM json_each(candidates)
+                    UNION
+                  	SELECT id, word, low, i+1, substr(low, i, 1) FROM tmp2 WHERE i <= length(word)
+                ),
+              	words(word, low, norm) AS (
+                	SELECT word, low, group_concat(c, '')
+                    FROM (SELECT * FROM tmp2 ORDER BY id, c) GROUP BY id
+                )
+            	SELECT json_group_array(word)
+              	FROM words, word
+                WHERE words.low != word.low AND words.norm = word.norm
+            )
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+        
+        res = con.execute("""SELECT * FROM anagram;""")
+        pprint(res.fetchall())
+
+
+#anagram()
 
 
 def yacht():
