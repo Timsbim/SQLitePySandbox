@@ -77,6 +77,10 @@ def say():
         con.executescript(stmt)
         
         stmt = dedent("""\
+            UPDATE say SET error = CASE
+            	WHEN number < 0 OR 999999999999 < number THEN 'input out of range'
+            END;
+            
             UPDATE say SET result = (
             	WITH words(n, word1, word2, word3) AS (
             		VALUES
@@ -91,6 +95,9 @@ def say():
                       (8, 'eight', 'eighteen',  'eighty'),
                       (9, 'nine',  'nineteen',  'ninety')
              	),
+              	units(n, word) AS (
+            		VALUES (0, ''), (1, ' thousand'), (2, ' million'), (3, ' billion')
+                ),
             	bs(b, rem, num) AS (
                 	SELECT 0, number / 1000, number % 1000
                   	UNION
@@ -108,9 +115,6 @@ def say():
                   		   ELSE word1 || ' hundred' || iif(word != '', ' ' || word, '')
                   		END
                   	FROM ws, words WHERE d = n AND rem >= 0
-                ),
-              	units(n, word) AS (
-            		VALUES (0, ''), (1, ' thousand'), (2, ' million'), (3, ' billion')
                 )
               	SELECT group_concat(ws.word || iif(ws.word != '', us.word, ''), ' ')
               	FROM (SELECT b, word FROM ws WHERE rem = -1 ORDER BY b DESC) ws,
@@ -119,7 +123,7 @@ def say():
             ) WHERE NOT error IS NOT NULL
             """)
         print_stmt(stmt, filepath=sql_path / "solution.sql")
-        con.execute(stmt)
+        con.executescript(stmt)
 
         stmt = """SELECT * FROM say WHERE result != expected_result;"""
         pprint(con.execute(stmt).fetchall())
