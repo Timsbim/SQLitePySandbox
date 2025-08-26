@@ -33,6 +33,101 @@ SQL_PATH.mkdir(parents=True, exist_ok=True)
 # Exercism SQLite path exercises
 
 
+def say():
+    """Exercism SQLite path exercise Say:
+    https://exercism.org/tracks/sqlite/exercises/Say"""
+ 
+    exercise = "Say"
+    data_path = DATA_PATH / exercise
+    sql_path = SQL_PATH / exercise
+    sql_path.mkdir(parents=True, exist_ok=True)
+   
+    with sqlite.connect(":memory:") as con:
+        stmt = dedent("""\
+            CREATE TABLE say (
+            	number 			INTEGER NOT NULL,
+            	expected_result	TEXT,
+              	expected_error 	TEXT,
+            	result 			TEXT,
+              	error  			TEXT
+            );
+            INSERT INTO say (number, expected_result, expected_error) VALUES
+            	(0, 'zero', NULL),
+                (1, 'one', NULL),
+                (14, 'fourteen', NULL),
+                (19, 'nineteen', NULL),
+                (20, 'twenty', NULL),
+                (22, 'twenty-two', NULL),
+                (30, 'thirty', NULL),
+                (99, 'ninety-nine', NULL),
+                (100, 'one hundred', NULL),
+                (123, 'one hundred twenty-three', NULL),
+                (200, 'two hundred', NULL),
+                (999, 'nine hundred ninety-nine', NULL),
+                (1000, 'one thousand', NULL),
+                (1234, 'one thousand two hundred thirty-four', NULL),
+                (1000000, 'one million', NULL),
+                (1002345, 'one million two thousand three hundred forty-five', NULL),
+                (1000000000, 'one billion', NULL),
+                (987654321123, 'nine hundred eighty-seven billion six hundred fifty-four million three hundred twenty-one thousand one hundred twenty-three', NULL),
+                (-1, NULL, 'input out of range'),
+                (1000000000000, NULL, 'input out of range');
+            """)
+        print_stmt(stmt, filepath=sql_path / "build_table.sql")
+        con.executescript(stmt)
+        
+        stmt = dedent("""\
+            UPDATE say SET result = (
+            	WITH words(n, word1, word2, word3) AS (
+            		VALUES
+                      (0, '',      'ten',       NULL),
+                      (1, 'one',   'eleven',    NULL),
+                      (2, 'two',   'twelve',    'twenty'),
+                      (3, 'three', 'thirteen',  'thirty'),
+                      (4, 'four',  'fourteen',  'forty'),
+                      (5, 'five',  'fifteen',   'fifty'),
+                      (6, 'six',   'sixteen',   'sixty'),
+                      (7, 'seven', 'seventeen', 'seventy'),
+                      (8, 'eight', 'eighteen',  'eighty'),
+                      (9, 'nine',  'nineteen',  'ninety')
+             	),
+            	bs(b, rem, num) AS (
+                	SELECT 0, number / 1000, number % 1000
+                  	UNION
+                  	SELECT b + 1, rem / 1000, rem % 1000 FROM bs WHERE rem > 0
+                ),
+              	ws(b, i, rem, d, word) AS (
+                	SELECT b, 1, num / 10 - NOT num, num % 10, iif(number, NULL, 'zero')
+                  	FROM bs
+                  	UNION
+                  	SELECT b, i + 1, rem / 10 - NOT rem, rem % 10, CASE
+                 		   WHEN i = 1 AND rem % 10 = 1 THEN word2
+                           WHEN i = 1 THEN word1
+                           WHEN i = 2 AND d = 1 THEN word
+                           WHEN i = 2 THEN word3 || iif(word != '', '-' || word, '')
+                  		   ELSE word1 || ' hundred' || iif(word != '', ' ' || word, '')
+                  		END
+                  	FROM ws, words WHERE d = n AND rem >= 0
+                ),
+              	units(n, word) AS (
+            		VALUES (0, ''), (1, ' thousand'), (2, ' million'), (3, ' billion')
+                )
+              	SELECT group_concat(ws.word || iif(ws.word != '', us.word, ''), ' ')
+              	FROM (SELECT b, word FROM ws WHERE rem = -1 ORDER BY b DESC) ws,
+                     (SELECT n, word FROM units ORDER BY n) us
+                WHERE ws.b = us.n
+            ) WHERE NOT error IS NOT NULL
+            """)
+        print_stmt(stmt, filepath=sql_path / "solution.sql")
+        con.execute(stmt)
+
+        stmt = """SELECT * FROM say WHERE result != expected_result;"""
+        pprint(con.execute(stmt).fetchall())
+ 
+
+#say()
+
+
 def rest_api():
     """Exercism SQLite path exercise 19, REST API:
     https://exercism.org/tracks/sqlite/exercises/rest-api"""
@@ -98,7 +193,7 @@ def rest_api():
         pprint(con.execute("""SELECT * FROM "rest-api";""").fetchall())
  
 
-rest_api()
+#rest_api()
 
 
 def tournament():
